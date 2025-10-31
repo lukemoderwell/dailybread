@@ -36,7 +36,7 @@ export default async function OnboardingPage() {
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold mb-2">Welcome to Daily Bread</h1>
           <p className="text-muted-foreground">
-            Let's set up your family Bible study
+            Let&apos;s set up your family Bible study
           </p>
         </div>
         <OnboardingForm userId={user.id} />

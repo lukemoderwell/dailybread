@@ -48,7 +48,6 @@ export default function ReadingExperience({
   currentBook,
   currentChapter,
   currentStreak,
-  longestStreak,
   bibleTranslation,
   ttsVoice,
 }: ReadingExperienceProps) {
@@ -61,12 +60,12 @@ export default function ReadingExperience({
   const [isPlaying, setIsPlaying] = useState(false);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [scriptureAudioUrl, setScriptureAudioUrl] = useState<string | null>(null);
   const [isPreloadingAudio, setIsPreloadingAudio] = useState(false);
   const [answeredQuestions, setAnsweredQuestions] = useState<Set<number>>(new Set());
   const [verses, setVerses] = useState<string[]>([]);
   const [currentVerseIndex, setCurrentVerseIndex] = useState<number>(-1);
+  const [wordTimestamps, setWordTimestamps] = useState<Array<{word: string, startSecond: number, endSecond: number}>>([]);
 
   // Load today's passage and generate questions
   useEffect(() => {
@@ -127,7 +126,7 @@ export default function ReadingExperience({
     }
 
     loadContent();
-  }, [currentBook, currentChapter, familyMembers, bibleTranslation, ttsVoice]);
+  }, [currentBook, currentChapter, familyMembers, bibleTranslation, ttsVoice]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Generate cache key for audio
   const generateCacheKey = (text: string, voice: string): string => {
@@ -313,14 +312,6 @@ export default function ReadingExperience({
     }
   };
 
-  const playQuestion = () => {
-    const questionUrl = questionAudioUrls[currentQuestionIndex];
-    if (questionUrl) {
-      playPreloadedAudio(questionUrl, "question");
-    } else {
-      toast.error("Audio is still loading, please wait...");
-    }
-  };
 
   const completeReading = async () => {
     try {
@@ -353,7 +344,7 @@ export default function ReadingExperience({
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading today's reading...</p>
+          <p className="text-muted-foreground">Loading today&apos;s reading...</p>
         </div>
       </div>
     );
@@ -364,7 +355,7 @@ export default function ReadingExperience({
       {/* Header with streak */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Today's Reading</h1>
+          <h1 className="text-2xl font-bold">Today&apos;s Reading</h1>
           <p className="text-muted-foreground text-sm">{reference}</p>
         </div>
         <div className="flex items-center gap-4">

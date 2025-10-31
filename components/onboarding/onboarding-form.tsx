@@ -123,7 +123,7 @@ export default function OnboardingForm({ userId }: OnboardingFormProps) {
           <CardTitle>Add Your Family Members</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {familyMembers.map((member, index) => (
+          {familyMembers.map((member) => (
             <div key={member.id} className="flex gap-2">
               <div className="flex-1">
                 <Label htmlFor={`name-${member.id}`} className="sr-only">

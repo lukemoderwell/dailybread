@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
 
 export async function POST(req: Request) {
   try {
@@ -12,7 +11,6 @@ export async function POST(req: Request) {
       );
     }
 
-    const cookieStore = await cookies();
     const response = NextResponse.json({ success: true });
 
     // Store session in cookies
