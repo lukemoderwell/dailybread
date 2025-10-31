@@ -65,6 +65,8 @@ export default function ReadingExperience({
   const [scriptureAudioUrl, setScriptureAudioUrl] = useState<string | null>(null);
   const [isPreloadingAudio, setIsPreloadingAudio] = useState(false);
   const [answeredQuestions, setAnsweredQuestions] = useState<Set<number>>(new Set());
+  const [verses, setVerses] = useState<string[]>([]);
+  const [currentVerseIndex, setCurrentVerseIndex] = useState<number>(-1);
 
   // Load today's passage and generate questions
   useEffect(() => {
@@ -93,6 +95,10 @@ export default function ReadingExperience({
 
         setPassage(cleanContent);
         setReference(passageData.reference);
+
+        // Split into verses using verse numbers [1], [2], etc.
+        const verseArray = cleanContent.split(/(?=\[\d+\])/).filter((v) => v.trim().length > 0);
+        setVerses(verseArray);
 
         // Generate questions
         const questionsRes = await fetch("/api/bible/generate-questions", {
@@ -123,18 +129,94 @@ export default function ReadingExperience({
     loadContent();
   }, [currentBook, currentChapter, familyMembers, bibleTranslation, ttsVoice]);
 
+  // Generate cache key for audio
+  const generateCacheKey = (text: string, voice: string): string => {
+    // Simple hash function
+    const str = `${text}:${voice}`;
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash;
+    }
+    return `tts_audio_${Math.abs(hash).toString(36)}`;
+  };
+
+  // IndexedDB helper functions
+  const openAudioCache = (): Promise<IDBDatabase> => {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open('AudioCache', 1);
+
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => resolve(request.result);
+
+      request.onupgradeneeded = (event) => {
+        const db = (event.target as IDBOpenDBRequest).result;
+        if (!db.objectStoreNames.contains('audio')) {
+          db.createObjectStore('audio');
+        }
+      };
+    });
+  };
+
+  const getCachedAudio = async (key: string): Promise<Blob | null> => {
+    try {
+      const db = await openAudioCache();
+      return new Promise((resolve, reject) => {
+        const transaction = db.transaction(['audio'], 'readonly');
+        const store = transaction.objectStore('audio');
+        const request = store.get(key);
+
+        request.onsuccess = () => resolve(request.result || null);
+        request.onerror = () => reject(request.error);
+      });
+    } catch (error) {
+      console.error('Error getting cached audio:', error);
+      return null;
+    }
+  };
+
+  const setCachedAudio = async (key: string, blob: Blob): Promise<void> => {
+    try {
+      const db = await openAudioCache();
+      return new Promise((resolve, reject) => {
+        const transaction = db.transaction(['audio'], 'readwrite');
+        const store = transaction.objectStore('audio');
+        const request = store.put(blob, key);
+
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+      });
+    } catch (error) {
+      console.error('Error caching audio:', error);
+    }
+  };
+
   // Preload scripture audio only
   const preloadAudio = async (passageText: string, ref: string) => {
     setIsPreloadingAudio(true);
 
     try {
+      const fullText = `${ref}. ${passageText}`;
+      const cacheKey = generateCacheKey(fullText, ttsVoice);
+
+      // Check IndexedDB cache first
+      const cachedBlob = await getCachedAudio(cacheKey);
+      if (cachedBlob) {
+        console.log('Using cached audio from IndexedDB');
+        const url = URL.createObjectURL(cachedBlob);
+        setScriptureAudioUrl(url);
+        setIsPreloadingAudio(false);
+        return;
+      }
+
       // Generate scripture audio
-      console.log('Preloading scripture audio...');
+      console.log('Generating new audio...');
       const scriptureResponse = await fetch("/api/tts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          text: `${ref}. ${passageText}`,
+          text: fullText,
           voice: ttsVoice
         }),
       });
@@ -143,6 +225,11 @@ export default function ReadingExperience({
         const audioBlob = await scriptureResponse.blob();
         const url = URL.createObjectURL(audioBlob);
         setScriptureAudioUrl(url);
+
+        // Cache the blob in IndexedDB
+        await setCachedAudio(cacheKey, audioBlob);
+        console.log('Audio cached to IndexedDB');
+
         console.log('Scripture audio preloaded');
       }
     } catch (error) {
@@ -173,6 +260,7 @@ export default function ReadingExperience({
 
     audio.onended = () => {
       setIsPlaying(false);
+      setCurrentVerseIndex(-1); // Reset highlighting
       if (type === "scripture") {
         setState("scripture-complete");
       } else {
@@ -188,8 +276,18 @@ export default function ReadingExperience({
 
     audio.onerror = () => {
       setIsPlaying(false);
+      setCurrentVerseIndex(-1);
       toast.error("Audio playback failed");
     };
+
+    // For scripture, highlight verses as they're read
+    if (type === "scripture" && verses.length > 0) {
+      audio.ontimeupdate = () => {
+        const progress = audio.currentTime / audio.duration;
+        const verseIndex = Math.floor(progress * verses.length);
+        setCurrentVerseIndex(Math.min(verseIndex, verses.length - 1));
+      };
+    }
 
     audio.play();
 
@@ -295,15 +393,27 @@ export default function ReadingExperience({
         <TabsContent value="scripture" className="mt-6">
           <Card>
             <CardContent className="pt-6">
-              <div
-                className="text-lg leading-relaxed prose prose-lg max-w-none"
-                dangerouslySetInnerHTML={{
-                  __html: passage.replace(
-                    /\[(\d+)\]/g,
-                    '<sup class="text-primary font-semibold">$1</sup>'
-                  ),
-                }}
-              />
+              <div className="text-lg leading-relaxed max-w-none">
+                {verses.map((verse, index) => {
+                  const isCurrentVerse = index === currentVerseIndex;
+                  return (
+                    <span
+                      key={index}
+                      className={`inline transition-all duration-300 ${
+                        isCurrentVerse
+                          ? "bg-yellow-200 dark:bg-yellow-600/40 px-2 py-1 rounded-lg"
+                          : ""
+                      }`}
+                      dangerouslySetInnerHTML={{
+                        __html: verse.replace(
+                          /\[(\d+)\]/g,
+                          '<sup class="text-primary font-semibold ml-1">$1</sup>'
+                        ) + ' ',
+                      }}
+                    />
+                  );
+                })}
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
