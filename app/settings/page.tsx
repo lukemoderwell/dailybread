@@ -25,6 +25,13 @@ export default async function SettingsPage() {
     .eq("user_id", user.id)
     .order("created_at", { ascending: true });
 
+  // Fetch reading progress
+  const { data: readingProgress } = await supabase
+    .from("reading_progress")
+    .select("*")
+    .eq("user_id", user.id)
+    .single();
+
   return (
     <div className="max-w-4xl mx-auto p-4 space-y-6">
       <div className="flex items-center gap-4">
@@ -45,6 +52,7 @@ export default async function SettingsPage() {
         userId={user.id}
         initialPreferences={preferences}
         initialFamilyMembers={familyMembers || []}
+        initialReadingProgress={readingProgress}
       />
     </div>
   );

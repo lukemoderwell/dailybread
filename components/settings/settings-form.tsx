@@ -7,10 +7,21 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
-import { Plus, Trash2, Save } from "lucide-react";
+import { Plus, Trash2, Save, BookOpen, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { createSupabaseClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface FamilyMember {
   id: string;
@@ -24,10 +35,18 @@ interface UserPreferences {
   daily_reading_minutes: number;
 }
 
+interface ReadingProgress {
+  current_book: string;
+  current_chapter: number;
+  current_streak: number;
+  longest_streak: number;
+}
+
 interface SettingsFormProps {
   userId: string;
   initialPreferences: UserPreferences | null;
   initialFamilyMembers: FamilyMember[];
+  initialReadingProgress: ReadingProgress | null;
 }
 
 const BIBLE_TRANSLATIONS = [
@@ -47,10 +66,27 @@ const TTS_VOICES = [
   { id: "shimmer", name: "Shimmer (Bright)" },
 ];
 
+const BIBLE_BOOKS = [
+  "Genesis", "Exodus", "Leviticus", "Numbers", "Deuteronomy",
+  "Joshua", "Judges", "Ruth", "1 Samuel", "2 Samuel",
+  "1 Kings", "2 Kings", "1 Chronicles", "2 Chronicles",
+  "Ezra", "Nehemiah", "Esther", "Job", "Psalms", "Proverbs",
+  "Ecclesiastes", "Song of Solomon", "Isaiah", "Jeremiah", "Lamentations",
+  "Ezekiel", "Daniel", "Hosea", "Joel", "Amos", "Obadiah",
+  "Jonah", "Micah", "Nahum", "Habakkuk", "Zephaniah", "Haggai",
+  "Zechariah", "Malachi", "Matthew", "Mark", "Luke", "John",
+  "Acts", "Romans", "1 Corinthians", "2 Corinthians", "Galatians",
+  "Ephesians", "Philippians", "Colossians", "1 Thessalonians",
+  "2 Thessalonians", "1 Timothy", "2 Timothy", "Titus", "Philemon",
+  "Hebrews", "James", "1 Peter", "2 Peter", "1 John", "2 John",
+  "3 John", "Jude", "Revelation"
+];
+
 export default function SettingsForm({
   userId,
   initialPreferences,
   initialFamilyMembers,
+  initialReadingProgress,
 }: SettingsFormProps) {
   const router = useRouter();
   const supabase = createSupabaseClient();
@@ -70,6 +106,10 @@ export default function SettingsForm({
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>(initialFamilyMembers);
   const [newMemberName, setNewMemberName] = useState("");
   const [newMemberAge, setNewMemberAge] = useState("");
+
+  // Reading plan state
+  const [currentBook, setCurrentBook] = useState(initialReadingProgress?.current_book || "Genesis");
+  const [isUpdatingPlan, setIsUpdatingPlan] = useState(false);
 
   const [isSaving, setIsSaving] = useState(false);
 
@@ -149,8 +189,149 @@ export default function SettingsForm({
     }
   };
 
+  const handleChangeBook = async () => {
+    if (currentBook === initialReadingProgress?.current_book) {
+      toast.error("Please select a different book");
+      return;
+    }
+
+    setIsUpdatingPlan(true);
+
+    try {
+      const response = await fetch("/api/reading-plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "change_book",
+          new_book: currentBook,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to change book");
+      }
+
+      toast.success(`Switched to ${currentBook}!`);
+      router.refresh();
+    } catch (error) {
+      console.error("Error changing book:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to change book");
+    } finally {
+      setIsUpdatingPlan(false);
+    }
+  };
+
+  const handleRestartBook = async () => {
+    setIsUpdatingPlan(true);
+
+    try {
+      const response = await fetch("/api/reading-plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "restart_book",
+          book: initialReadingProgress?.current_book,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to restart book");
+      }
+
+      toast.success(`Restarted ${initialReadingProgress?.current_book}!`);
+      router.refresh();
+    } catch (error) {
+      console.error("Error restarting book:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to restart book");
+    } finally {
+      setIsUpdatingPlan(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
+      {/* Reading Plan */}
+      {initialReadingProgress && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BookOpen className="h-5 w-5" />
+              Reading Plan
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="p-4 bg-muted rounded-lg space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Current Book:</span>
+                <span className="font-semibold">{initialReadingProgress.current_book}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Current Chapter:</span>
+                <span className="font-semibold">{initialReadingProgress.current_chapter}</span>
+              </div>
+            </div>
+
+            <div className="space-y-4 pt-4 border-t">
+              <div className="space-y-2">
+                <Label>Switch to a different book</Label>
+                <Select value={currentBook} onValueChange={setCurrentBook}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-[400px] overflow-y-auto">
+                    {BIBLE_BOOKS.map((book) => (
+                      <SelectItem key={book} value={book}>
+                        {book}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  onClick={handleChangeBook}
+                  disabled={isUpdatingPlan || currentBook === initialReadingProgress.current_book}
+                  className="w-full"
+                >
+                  <BookOpen className="h-4 w-4 mr-2" />
+                  {isUpdatingPlan ? "Switching..." : "Switch to This Book"}
+                </Button>
+              </div>
+
+              <div className="space-y-2 pt-4 border-t">
+                <Label>Restart current book</Label>
+                <p className="text-sm text-muted-foreground">
+                  This will reset your progress to chapter 1 of {initialReadingProgress.current_book}
+                </p>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="outline" disabled={isUpdatingPlan} className="w-full">
+                      <RotateCcw className="h-4 w-4 mr-2" />
+                      Restart {initialReadingProgress.current_book}
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Restart {initialReadingProgress.current_book}?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will reset your progress to chapter 1. Your reading streak will be preserved,
+                        but you&apos;ll start this book from the beginning.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleRestartBook}>
+                        Restart Book
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Family Members */}
       <Card>
         <CardHeader>
