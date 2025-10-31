@@ -69,7 +69,7 @@ export default function PricingPage() {
 
       const { url } = await response.json();
       if (url) {
-        window.location.href = url;
+        window.location.assign(url);
       }
     } catch (error) {
       console.error("Checkout error:", error);
@@ -81,7 +81,7 @@ export default function PricingPage() {
       <div className="mb-16 text-center">
         <h1 className="text-4xl font-bold">Simple, Transparent Pricing</h1>
         <p className="mt-4 text-lg text-muted-foreground">
-          Choose the plan that's right for you
+          Choose the plan that&apos;s right for you
         </p>
       </div>
 

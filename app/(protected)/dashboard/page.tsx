@@ -60,7 +60,7 @@ export default async function DashboardPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>What's Next?</CardTitle>
+            <CardTitle>What&apos;s Next?</CardTitle>
             <CardDescription>Build your features</CardDescription>
           </CardHeader>
           <CardContent>

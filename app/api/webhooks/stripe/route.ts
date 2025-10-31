@@ -24,8 +24,9 @@ export async function POST(req: Request) {
       signature,
       process.env.STRIPE_WEBHOOK_SECRET!
     );
-  } catch (err: any) {
-    console.error("Webhook signature verification failed:", err.message);
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : "Unknown error";
+    console.error("Webhook signature verification failed:", errorMessage);
     return NextResponse.json(
       { error: "Webhook signature verification failed" },
       { status: 400 }
@@ -51,7 +52,10 @@ export async function POST(req: Request) {
             ? subscription.items.data[0].price
             : subscription.items.data[0].price.id;
 
-        const subData: any = subscription;
+        const subData = subscription as {
+          current_period_start?: number;
+          current_period_end?: number;
+        };
 
         await supabase.from("subscriptions").upsert({
           id: subscription.id,
@@ -117,7 +121,7 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ received: true });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Webhook handler error:", error);
     return NextResponse.json(
       { error: "Webhook handler failed" },

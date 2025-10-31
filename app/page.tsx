@@ -65,7 +65,7 @@ export default async function Home() {
                 Age-Appropriate Questions
               </h3>
               <p className="text-sm text-muted-foreground">
-                AI-generated questions tailored to each child's age and
+                Engaging questions tailored to each child&apos;s age and
                 understanding
               </p>
             </div>
@@ -85,7 +85,9 @@ export default async function Home() {
       {/* CTA Section */}
       <section className="container mx-auto px-4 py-24 text-center">
         <div className="mx-auto max-w-2xl space-y-8">
-          <h2 className="text-3xl font-bold">Start Your Family's Journey</h2>
+          <h2 className="text-3xl font-bold">
+            Start Your Family&apos;s Journey
+          </h2>
           <p className="text-lg text-muted-foreground">
             Build consistent Bible reading habits your kids will look forward
             to.

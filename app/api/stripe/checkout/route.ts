@@ -63,10 +63,11 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ url: session.url, sessionId: session.id });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Checkout error:", error);
+    const errorMessage = error instanceof Error ? error.message : "Internal server error";
     return NextResponse.json(
-      { error: error.message || "Internal server error" },
+      { error: errorMessage },
       { status: 500 }
     );
   }

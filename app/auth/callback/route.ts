@@ -1,7 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { type NextRequest } from "next/server";
-import { cookies } from "next/headers";
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
@@ -59,7 +58,7 @@ export async function GET(request: NextRequest) {
 
     const { data, error } = await supabase.auth.verifyOtp({
       token_hash,
-      type: type as any,
+      type: type as 'email' | 'signup' | 'invite' | 'magiclink' | 'recovery' | 'email_change',
     });
 
     console.log('Verify OTP result:', {

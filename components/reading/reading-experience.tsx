@@ -96,7 +96,7 @@ export default function ReadingExperience({
         setReference(passageData.reference);
 
         // Split into verses using verse numbers [1], [2], etc.
-        const verseArray = cleanContent.split(/(?=\[\d+\])/).filter((v) => v.trim().length > 0);
+        const verseArray = cleanContent.split(/(?=\[\d+\])/).filter((v: string) => v.trim().length > 0);
         setVerses(verseArray);
 
         // Generate questions
@@ -144,21 +144,26 @@ export default function ReadingExperience({
   // IndexedDB helper functions
   const openAudioCache = (): Promise<IDBDatabase> => {
     return new Promise((resolve, reject) => {
-      const request = indexedDB.open('AudioCache', 1);
+      const request = indexedDB.open('AudioCache', 2); // Bumped version to clear old cache
 
       request.onerror = () => reject(request.error);
       request.onsuccess = () => resolve(request.result);
 
       request.onupgradeneeded = (event) => {
         const db = (event.target as IDBOpenDBRequest).result;
-        if (!db.objectStoreNames.contains('audio')) {
-          db.createObjectStore('audio');
+
+        // Delete old object store if it exists
+        if (db.objectStoreNames.contains('audio')) {
+          db.deleteObjectStore('audio');
         }
+
+        // Create fresh object store
+        db.createObjectStore('audio');
       };
     });
   };
 
-  const getCachedAudio = async (key: string): Promise<Blob | null> => {
+  const getCachedAudio = async (key: string): Promise<{blob: Blob, timestamps: Array<{word: string, startSecond: number, endSecond: number}>} | null> => {
     try {
       const db = await openAudioCache();
       return new Promise((resolve, reject) => {
@@ -166,7 +171,14 @@ export default function ReadingExperience({
         const store = transaction.objectStore('audio');
         const request = store.get(key);
 
-        request.onsuccess = () => resolve(request.result || null);
+        request.onsuccess = () => {
+          const result = request.result;
+          if (result && result.blob instanceof Blob) {
+            resolve(result);
+          } else {
+            resolve(null);
+          }
+        };
         request.onerror = () => reject(request.error);
       });
     } catch (error) {
@@ -175,13 +187,13 @@ export default function ReadingExperience({
     }
   };
 
-  const setCachedAudio = async (key: string, blob: Blob): Promise<void> => {
+  const setCachedAudio = async (key: string, blob: Blob, timestamps: Array<{word: string, startSecond: number, endSecond: number}>): Promise<void> => {
     try {
       const db = await openAudioCache();
       return new Promise((resolve, reject) => {
         const transaction = db.transaction(['audio'], 'readwrite');
         const store = transaction.objectStore('audio');
-        const request = store.put(blob, key);
+        const request = store.put({ blob, timestamps }, key);
 
         request.onsuccess = () => resolve();
         request.onerror = () => reject(request.error);
@@ -200,11 +212,12 @@ export default function ReadingExperience({
       const cacheKey = generateCacheKey(fullText, ttsVoice);
 
       // Check IndexedDB cache first
-      const cachedBlob = await getCachedAudio(cacheKey);
-      if (cachedBlob) {
+      const cachedData = await getCachedAudio(cacheKey);
+      if (cachedData) {
         console.log('Using cached audio from IndexedDB');
-        const url = URL.createObjectURL(cachedBlob);
+        const url = URL.createObjectURL(cachedData.blob);
         setScriptureAudioUrl(url);
+        setWordTimestamps(cachedData.timestamps || []);
         setIsPreloadingAudio(false);
         return;
       }
@@ -221,13 +234,24 @@ export default function ReadingExperience({
       });
 
       if (scriptureResponse.ok) {
-        const audioBlob = await scriptureResponse.blob();
-        const url = URL.createObjectURL(audioBlob);
-        setScriptureAudioUrl(url);
+        const data = await scriptureResponse.json();
 
-        // Cache the blob in IndexedDB
-        await setCachedAudio(cacheKey, audioBlob);
-        console.log('Audio cached to IndexedDB');
+        // Convert base64 audio back to blob
+        const audioData = atob(data.audio);
+        const arrayBuffer = new ArrayBuffer(audioData.length);
+        const view = new Uint8Array(arrayBuffer);
+        for (let i = 0; i < audioData.length; i++) {
+          view[i] = audioData.charCodeAt(i);
+        }
+        const audioBlob = new Blob([arrayBuffer], { type: 'audio/mpeg' });
+        const url = URL.createObjectURL(audioBlob);
+
+        setScriptureAudioUrl(url);
+        setWordTimestamps(data.wordTimestamps || []);
+
+        // Cache the blob and timestamps in IndexedDB
+        await setCachedAudio(cacheKey, audioBlob, data.wordTimestamps || []);
+        console.log('Audio cached to IndexedDB with timestamps');
 
         console.log('Scripture audio preloaded');
       }
@@ -254,7 +278,6 @@ export default function ReadingExperience({
 
     const audio = new Audio();
     audio.src = url;
-    audio.type = "audio/mpeg";
     audioRef.current = audio;
 
     audio.onended = () => {
@@ -279,13 +302,42 @@ export default function ReadingExperience({
       toast.error("Audio playback failed");
     };
 
-    // For scripture, highlight verses as they're read
+    // For scripture, highlight verses using timestamps if available
     if (type === "scripture" && verses.length > 0) {
-      audio.ontimeupdate = () => {
-        const progress = audio.currentTime / audio.duration;
-        const verseIndex = Math.floor(progress * verses.length);
-        setCurrentVerseIndex(Math.min(verseIndex, verses.length - 1));
-      };
+      if (wordTimestamps.length > 0) {
+        // Use accurate word timestamps to find current verse
+        audio.ontimeupdate = () => {
+          const currentTime = audio.currentTime;
+
+          // Find the current word being spoken
+          const currentWordIndex = wordTimestamps.findIndex((wt, idx) => {
+            const nextWord = wordTimestamps[idx + 1];
+            return currentTime >= wt.startSecond && (!nextWord || currentTime < nextWord.startSecond);
+          });
+
+          if (currentWordIndex >= 0) {
+            // Map word index to verse index
+            let wordCount = 0;
+            for (let i = 0; i < verses.length; i++) {
+              const verseWordCount = verses[i].split(/\s+/).length;
+              if (currentWordIndex < wordCount + verseWordCount) {
+                setCurrentVerseIndex(i);
+                break;
+              }
+              wordCount += verseWordCount;
+            }
+          }
+        };
+      } else {
+        // Fallback to progress-based estimation
+        audio.ontimeupdate = () => {
+          if (audio.duration && !isNaN(audio.duration) && audio.duration > 0) {
+            const progress = audio.currentTime / audio.duration;
+            const verseIndex = Math.floor(progress * verses.length);
+            setCurrentVerseIndex(Math.min(verseIndex, verses.length - 1));
+          }
+        };
+      }
     }
 
     audio.play();
@@ -387,12 +439,16 @@ export default function ReadingExperience({
               <div className="text-lg leading-relaxed max-w-none">
                 {verses.map((verse, index) => {
                   const isCurrentVerse = index === currentVerseIndex;
+                  const isPastVerse = index < currentVerseIndex;
+
                   return (
                     <span
                       key={index}
                       className={`inline transition-all duration-300 ${
                         isCurrentVerse
-                          ? "bg-yellow-200 dark:bg-yellow-600/40 px-2 py-1 rounded-lg"
+                          ? "bg-yellow-400 dark:bg-yellow-500 text-black font-bold px-2 py-1 rounded-md"
+                          : isPastVerse
+                          ? "bg-yellow-100 dark:bg-yellow-900/30 px-1 rounded"
                           : ""
                       }`}
                       dangerouslySetInnerHTML={{

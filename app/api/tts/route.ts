@@ -59,7 +59,7 @@ export async function POST(req: Request) {
     console.log('Returning audio, size:', audioBuffer.byteLength);
 
     // Transcribe the audio to get word-level timestamps
-    let wordTimestamps: WordTimestamp[] = [];
+    const wordTimestamps: WordTimestamp[] = [];
     try {
       console.log('Transcribing audio for word timestamps...');
       const transcription = await transcribe({
