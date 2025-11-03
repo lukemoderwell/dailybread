@@ -1,4 +1,4 @@
-import { NextResponse, type NextRequest } from "next/server";
+import { NextResponse, type NextRequest } from 'next/server';
 
 export async function updateSession(request: NextRequest) {
   const supabaseResponse = NextResponse.next({
@@ -13,13 +13,13 @@ export async function updateSession(request: NextRequest) {
   const user = accessToken && refreshToken;
 
   // Protected routes
-  const protectedPaths = ["/dashboard", "/settings"];
+  const protectedPaths = ['/today', '/settings'];
   const isProtectedPath = protectedPaths.some((path) =>
     request.nextUrl.pathname.startsWith(path)
   );
 
   // Auth routes (redirect if already logged in)
-  const authPaths = ["/login"];
+  const authPaths = ['/login'];
   const isAuthPath = authPaths.some((path) =>
     request.nextUrl.pathname.startsWith(path)
   );
@@ -27,14 +27,14 @@ export async function updateSession(request: NextRequest) {
   // Redirect to login if accessing protected route without auth
   if (!user && isProtectedPath) {
     const url = request.nextUrl.clone();
-    url.pathname = "/login";
+    url.pathname = '/login';
     return NextResponse.redirect(url);
   }
 
-  // Redirect to dashboard if accessing auth route while logged in
+  // Redirect to today if accessing auth route while logged in
   if (user && isAuthPath) {
     const url = request.nextUrl.clone();
-    url.pathname = "/dashboard";
+    url.pathname = '/today';
     return NextResponse.redirect(url);
   }
 

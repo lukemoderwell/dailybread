@@ -62,6 +62,7 @@ export default function ReadingExperience({
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isLoadingQuestions, setIsLoadingQuestions] = useState(true);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [scriptureAudioUrl, setScriptureAudioUrl] = useState<string | null>(null);
@@ -75,7 +76,7 @@ export default function ReadingExperience({
   useEffect(() => {
     async function loadContent() {
       try {
-        // Fetch Bible passage
+        // Fetch Bible passage first (fastest, unblocks UI)
         const passageRes = await fetch("/api/bible/passage", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -91,41 +92,55 @@ export default function ReadingExperience({
 
         const passageData = await passageRes.json();
 
-        // Strip HTML tags from content for TTS
-        const cleanContent = passageData.content
-          .replace(/<[^>]*>/g, "")
-          .replace(/\s+/g, " ")
-          .trim();
+        // Use the HTML content directly from the API
+        // The API returns: <span class="v">1</span>The text...
+        // We'll style these with CSS instead of converting to [1]
+        const htmlContent = passageData.content;
 
-        setPassage(cleanContent);
+        setPassage(htmlContent);
         setReference(passageData.reference);
 
-        // Split into verses using verse numbers [1], [2], etc.
-        const verseArray = cleanContent.split(/(?=\[\d+\])/).filter((v: string) => v.trim().length > 0);
+        // For verse tracking (TTS highlighting), extract plain text
+        const plainText = htmlContent.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+
+        // Split by verse numbers for highlighting (rough approximation)
+        // This is just for TTS tracking, not display
+        const verseArray = plainText.split(/(?=\d+\s)/).filter((v: string) => v.trim().length > 0);
         setVerses(verseArray);
 
-        // Generate questions
-        const questionsRes = await fetch("/api/bible/generate-questions", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            passage: cleanContent,
-            reference: passageData.reference,
-            familyMembers: familyMembers,
+        // Show content immediately - user can start reading while questions/audio load
+        setState("ready");
+
+        // Load questions and TTS in parallel (non-blocking)
+        Promise.all([
+          // Generate questions
+          fetch("/api/bible/generate-questions", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              passage: plainText,
+              reference: passageData.reference,
+              familyMembers: familyMembers,
+            }),
+          }).then(async (questionsRes) => {
+            if (questionsRes.ok) {
+              const questionsData = await questionsRes.json();
+              setQuestions(questionsData.questions);
+            } else {
+              console.error("Failed to generate questions");
+            }
+          }).finally(() => {
+            setIsLoadingQuestions(false);
           }),
+
+          // Preload scripture audio if TTS is enabled
+          enableTts ? preloadAudio(plainText, passageData.reference) : Promise.resolve(),
+        ]).catch((error) => {
+          console.error("Error loading questions/audio:", error);
+          setIsLoadingQuestions(false);
+          // Don't block the UI - content is already showing
         });
 
-        if (!questionsRes.ok) throw new Error("Failed to generate questions");
-
-        const questionsData = await questionsRes.json();
-        setQuestions(questionsData.questions);
-
-        // Preload scripture audio in the background only if TTS is enabled
-        if (enableTts) {
-          preloadAudio(cleanContent, passageData.reference);
-        }
-
-        setState("ready");
       } catch (error) {
         console.error("Content loading error:", error);
         toast.error("Failed to load today's reading");
@@ -400,10 +415,37 @@ export default function ReadingExperience({
 
   if (state === "loading") {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading today&apos;s reading...</p>
+      <div className="max-w-4xl mx-auto p-4 pb-24 space-y-6">
+        {/* Header skeleton */}
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <div className="h-8 w-48 bg-muted animate-pulse rounded"></div>
+            <div className="h-4 w-32 bg-muted animate-pulse rounded"></div>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="h-10 w-10 bg-muted animate-pulse rounded"></div>
+            <div className="h-16 w-16 bg-muted animate-pulse rounded"></div>
+          </div>
+        </div>
+
+        {/* Tabs skeleton */}
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-2 h-12">
+            <div className="bg-muted animate-pulse rounded"></div>
+            <div className="bg-muted animate-pulse rounded"></div>
+          </div>
+
+          {/* Content skeleton */}
+          <Card>
+            <CardContent className="pt-6 space-y-3">
+              <div className="h-4 bg-muted animate-pulse rounded w-full"></div>
+              <div className="h-4 bg-muted animate-pulse rounded w-11/12"></div>
+              <div className="h-4 bg-muted animate-pulse rounded w-full"></div>
+              <div className="h-4 bg-muted animate-pulse rounded w-10/12"></div>
+              <div className="h-4 bg-muted animate-pulse rounded w-full"></div>
+              <div className="h-4 bg-muted animate-pulse rounded w-9/12"></div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     );
@@ -442,31 +484,63 @@ export default function ReadingExperience({
         {/* Scripture Tab */}
         <TabsContent value="scripture" className="mt-6">
           <Card>
-            <CardContent className="pt-6">
-              <div className="text-lg leading-relaxed max-w-none">
-                {verses.map((verse, index) => {
-                  const isCurrentVerse = index === currentVerseIndex;
-                  const isPastVerse = index < currentVerseIndex;
+            <CardContent className="pt-6 px-6 md:px-12">
+              <div className="mx-auto max-w-prose">
+                <style jsx>{`
+                  .scripture-content {
+                    font-family: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+                    font-size: 1rem;
+                    line-height: 1.75;
+                    text-align: left;
+                    hyphens: auto;
+                    word-spacing: 0.05em;
+                  }
 
-                  return (
-                    <span
-                      key={index}
-                      className={`inline transition-all duration-300 ${
-                        isCurrentVerse
-                          ? "bg-yellow-400 dark:bg-yellow-500 text-black font-bold px-2 py-1 rounded-md"
-                          : isPastVerse
-                          ? "bg-yellow-100 dark:bg-yellow-900/30 px-1 rounded"
-                          : ""
-                      }`}
-                      dangerouslySetInnerHTML={{
-                        __html: verse.replace(
-                          /\[(\d+)\]/g,
-                          '<sup class="text-primary font-semibold ml-1">$1</sup>'
-                        ) + ' ',
-                      }}
-                    />
-                  );
-                })}
+                  @media (min-width: 768px) {
+                    .scripture-content {
+                      font-size: 1.125rem;
+                    }
+                  }
+
+                  /* Style Bible API verse numbers */
+                  .scripture-content :global(.v) {
+                    opacity: 0.8;
+                    font-size: 0.65em;
+                    font-weight: normal;
+                    margin-right: 0.3em;
+                    margin-left: 0.1em;
+                    vertical-align: super;
+                    line-height: 0;
+                    position: relative;
+                    top: -0.4em;
+                  }
+
+                  /* Add slight spacing after verse spans for sentence separation */
+                  .scripture-content :global(span[data-sid]) {
+                    margin-right: 0.15em;
+                  }
+
+                  /* Make paragraphs flow inline without breaks */
+                  .scripture-content :global(p) {
+                    display: inline;
+                    margin: 0;
+                    padding: 0;
+                  }
+
+                  .scripture-content :global(.p) {
+                    display: inline;
+                  }
+
+                  /* Style added words (italics in KJV) */
+                  .scripture-content :global(.add) {
+                    font-style: italic;
+                    opacity: 0.9;
+                  }
+                `}</style>
+                <div
+                  className="scripture-content"
+                  dangerouslySetInnerHTML={{ __html: passage }}
+                />
               </div>
             </CardContent>
           </Card>
@@ -475,50 +549,82 @@ export default function ReadingExperience({
         {/* Questions Tab */}
         <TabsContent value="questions" className="mt-6">
           <div className="space-y-4">
-            {questions.map((question, index) => (
-              <Card
-                key={question.familyMemberId}
-                className={answeredQuestions.has(index) ? "opacity-60" : ""}
-              >
-                <CardContent className="pt-6">
-                  <div className="space-y-4">
-                    <div className="flex items-start gap-4">
-                      <button
-                        onClick={() => toggleQuestion(index)}
-                        className="mt-1 flex-shrink-0"
-                      >
-                        <div className={`w-6 h-6 rounded border-2 flex items-center justify-center transition-colors ${
-                          answeredQuestions.has(index)
-                            ? "bg-primary border-primary"
-                            : "border-muted-foreground"
-                        }`}>
-                          {answeredQuestions.has(index) && (
-                            <Check className="h-4 w-4 text-primary-foreground" />
-                          )}
+            {isLoadingQuestions ? (
+              // Loading skeleton for questions
+              <>
+                {familyMembers.map((member) => (
+                  <Card key={member.id}>
+                    <CardContent className="pt-6">
+                      <div className="space-y-4">
+                        <div className="flex items-start gap-4">
+                          <div className="w-6 h-6 bg-muted animate-pulse rounded flex-shrink-0 mt-1"></div>
+                          <div className="flex-1 space-y-3">
+                            <div className="flex items-center justify-between">
+                              <div className="h-6 w-32 bg-muted animate-pulse rounded"></div>
+                              <div className="h-4 w-16 bg-muted animate-pulse rounded"></div>
+                            </div>
+                            <div className="space-y-2">
+                              <div className="h-4 bg-muted animate-pulse rounded w-full"></div>
+                              <div className="h-4 bg-muted animate-pulse rounded w-11/12"></div>
+                              <div className="h-4 bg-muted animate-pulse rounded w-10/12"></div>
+                            </div>
+                          </div>
                         </div>
-                      </button>
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between mb-2">
-                          <h3 className="text-xl font-semibold">{question.name}</h3>
-                          <span className="text-sm text-muted-foreground">Age {question.age}</span>
-                        </div>
-                        <p className="text-lg leading-relaxed">{question.question}</p>
                       </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                    </CardContent>
+                  </Card>
+                ))}
+                <div className="h-16 bg-muted animate-pulse rounded w-full mt-6"></div>
+              </>
+            ) : (
+              // Actual questions
+              <>
+                {questions.map((question, index) => (
+                  <Card
+                    key={question.familyMemberId}
+                    className={answeredQuestions.has(index) ? "opacity-60" : ""}
+                  >
+                    <CardContent className="pt-6">
+                      <div className="space-y-4">
+                        <div className="flex items-start gap-4">
+                          <button
+                            onClick={() => toggleQuestion(index)}
+                            className="mt-1 flex-shrink-0"
+                          >
+                            <div className={`w-6 h-6 rounded border-2 flex items-center justify-center transition-colors ${
+                              answeredQuestions.has(index)
+                                ? "bg-primary border-primary"
+                                : "border-muted-foreground"
+                            }`}>
+                              {answeredQuestions.has(index) && (
+                                <Check className="h-4 w-4 text-primary-foreground" />
+                              )}
+                            </div>
+                          </button>
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between mb-2">
+                              <h3 className="text-xl font-semibold">{question.name}</h3>
+                              <span className="text-sm text-muted-foreground">Age {question.age}</span>
+                            </div>
+                            <p className="text-lg leading-relaxed">{question.question}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
 
-            {questions.length > 0 && (
-              <Button
-                size="lg"
-                onClick={completeReading}
-                className="w-full h-16 mt-6"
-              >
-                <Check className="h-6 w-6 mr-2" />
-                Mark as Complete
-              </Button>
+                {questions.length > 0 && (
+                  <Button
+                    size="lg"
+                    onClick={completeReading}
+                    className="w-full h-16 mt-6"
+                  >
+                    <Check className="h-6 w-6 mr-2" />
+                    Mark as Complete
+                  </Button>
+                )}
+              </>
             )}
           </div>
         </TabsContent>
