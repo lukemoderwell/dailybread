@@ -50,6 +50,8 @@ export default async function SettingsPage() {
 
       <SettingsForm
         userId={user.id}
+        userEmail={user.email || ""}
+        userName={user.user_metadata?.full_name || null}
         initialPreferences={preferences}
         initialFamilyMembers={familyMembers || []}
         initialReadingProgress={readingProgress}

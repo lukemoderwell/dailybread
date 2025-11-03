@@ -8,7 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Trash2, Save, BookOpen, RotateCcw } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Plus, Trash2, Save, BookOpen, RotateCcw, User } from "lucide-react";
 import { toast } from "sonner";
 import { createSupabaseClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
@@ -47,6 +48,8 @@ interface ReadingProgress {
 
 interface SettingsFormProps {
   userId: string;
+  userEmail: string;
+  userName: string | null;
   initialPreferences: UserPreferences | null;
   initialFamilyMembers: FamilyMember[];
   initialReadingProgress: ReadingProgress | null;
@@ -87,12 +90,17 @@ const BIBLE_BOOKS = [
 
 export default function SettingsForm({
   userId,
+  userEmail,
+  userName: initialUserName,
   initialPreferences,
   initialFamilyMembers,
   initialReadingProgress,
 }: SettingsFormProps) {
   const router = useRouter();
   const supabase = createSupabaseClient();
+
+  // Profile state
+  const [userName, setUserName] = useState(initialUserName || "");
 
   // Preferences state
   const [translation, setTranslation] = useState(
@@ -122,6 +130,11 @@ export default function SettingsForm({
   const [isUpdatingPlan, setIsUpdatingPlan] = useState(false);
 
   const [isSaving, setIsSaving] = useState(false);
+
+  // Password state
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
 
   const handleAddFamilyMember = async () => {
     if (!newMemberName || !newMemberAge) {
@@ -262,8 +275,74 @@ export default function SettingsForm({
     }
   };
 
+  const handleUpdatePassword = async () => {
+    if (!newPassword || !confirmNewPassword) {
+      toast.error("Please enter both password fields");
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      toast.error("Password must be at least 6 characters");
+      return;
+    }
+
+    if (newPassword !== confirmNewPassword) {
+      toast.error("Passwords do not match");
+      return;
+    }
+
+    setIsUpdatingPassword(true);
+
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      if (error) throw error;
+
+      toast.success("Password updated successfully!");
+      setNewPassword("");
+      setConfirmNewPassword("");
+    } catch (error) {
+      console.error("Error updating password:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to update password");
+    } finally {
+      setIsUpdatingPassword(false);
+    }
+  };
+
+  const handleUpdateProfile = async () => {
+    setIsUpdatingPassword(true);
+
+    try {
+      const { error } = await supabase.auth.updateUser({
+        data: {
+          full_name: userName,
+        },
+      });
+
+      if (error) throw error;
+
+      toast.success("Profile updated successfully!");
+      router.refresh();
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to update profile");
+    } finally {
+      setIsUpdatingPassword(false);
+    }
+  };
+
   return (
-    <div className="space-y-6">
+    <Tabs defaultValue="reading" className="w-full">
+      <TabsList className="grid w-full grid-cols-3 mb-8">
+        <TabsTrigger value="reading">Reading</TabsTrigger>
+        <TabsTrigger value="family">Family Members</TabsTrigger>
+        <TabsTrigger value="profile">Profile</TabsTrigger>
+      </TabsList>
+
+      {/* Reading Tab */}
+      <TabsContent value="reading" className="space-y-6">
       {/* Reading Plan */}
       {initialReadingProgress && (
         <Card>
@@ -343,63 +422,6 @@ export default function SettingsForm({
           </CardContent>
         </Card>
       )}
-
-      {/* Family Members */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Family Members</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {familyMembers.map((member) => (
-            <div
-              key={member.id}
-              className="flex items-center justify-between p-3 border rounded-lg"
-            >
-              <div>
-                <p className="font-semibold">{member.name}</p>
-                <p className="text-sm text-muted-foreground">Age {member.age}</p>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleRemoveFamilyMember(member.id, member.name)}
-              >
-                <Trash2 className="h-4 w-4 text-destructive" />
-              </Button>
-            </div>
-          ))}
-
-          <div className="flex gap-2 pt-4 border-t">
-            <Input
-              placeholder="Name"
-              value={newMemberName}
-              onChange={(e) => setNewMemberName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  handleAddFamilyMember();
-                }
-              }}
-            />
-            <Input
-              type="number"
-              placeholder="Age"
-              value={newMemberAge}
-              onChange={(e) => setNewMemberAge(e.target.value)}
-              className="w-24"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  handleAddFamilyMember();
-                }
-              }}
-            />
-            <Button onClick={handleAddFamilyMember}>
-              <Plus className="h-4 w-4" />
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Bible Translation */}
       <Card>
@@ -491,7 +513,7 @@ export default function SettingsForm({
         </CardContent>
       </Card>
 
-      {/* Save Button */}
+      {/* Save Reading Settings Button */}
       <Button
         size="lg"
         className="w-full"
@@ -499,8 +521,155 @@ export default function SettingsForm({
         disabled={isSaving}
       >
         <Save className="h-5 w-5 mr-2" />
-        {isSaving ? "Saving..." : "Save Settings"}
+        {isSaving ? "Saving..." : "Save Reading Settings"}
       </Button>
-    </div>
+      </TabsContent>
+
+      {/* Family Members Tab */}
+      <TabsContent value="family" className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Family Members</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {familyMembers.map((member) => (
+            <div
+              key={member.id}
+              className="flex items-center justify-between p-3 border rounded-lg"
+            >
+              <div>
+                <p className="font-semibold">{member.name}</p>
+                <p className="text-sm text-muted-foreground">Age {member.age}</p>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleRemoveFamilyMember(member.id, member.name)}
+              >
+                <Trash2 className="h-4 w-4 text-destructive" />
+              </Button>
+            </div>
+          ))}
+
+          <div className="flex gap-2 pt-4 border-t">
+            <Input
+              placeholder="Name"
+              value={newMemberName}
+              onChange={(e) => setNewMemberName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleAddFamilyMember();
+                }
+              }}
+            />
+            <Input
+              type="number"
+              placeholder="Age"
+              value={newMemberAge}
+              onChange={(e) => setNewMemberAge(e.target.value)}
+              className="w-24"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleAddFamilyMember();
+                }
+              }}
+            />
+            <Button onClick={handleAddFamilyMember}>
+              <Plus className="h-4 w-4" />
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+      </TabsContent>
+
+      {/* Profile Tab */}
+      <TabsContent value="profile" className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <User className="h-5 w-5" />
+            Profile
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="name">Name</Label>
+            <Input
+              id="name"
+              type="text"
+              placeholder="Your name"
+              value={userName}
+              onChange={(e) => setUserName(e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              type="email"
+              value={userEmail}
+              disabled
+              className="bg-muted"
+            />
+            <p className="text-xs text-muted-foreground">
+              Email cannot be changed
+            </p>
+          </div>
+          <Button
+            onClick={handleUpdateProfile}
+            disabled={isUpdatingPassword}
+            className="w-full"
+          >
+            {isUpdatingPassword ? "Updating..." : "Update Profile"}
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Password Update */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Password</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Set or update your password. This allows you to sign in without waiting for a magic link.
+          </p>
+          <div className="space-y-2">
+            <Label htmlFor="new-password">New Password</Label>
+            <Input
+              id="new-password"
+              type="password"
+              placeholder="••••••••"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              disabled={isUpdatingPassword}
+              minLength={6}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="confirm-password">Confirm Password</Label>
+            <Input
+              id="confirm-password"
+              type="password"
+              placeholder="••••••••"
+              value={confirmNewPassword}
+              onChange={(e) => setConfirmNewPassword(e.target.value)}
+              disabled={isUpdatingPassword}
+              minLength={6}
+            />
+          </div>
+          <Button
+            onClick={handleUpdatePassword}
+            disabled={isUpdatingPassword || !newPassword || !confirmNewPassword}
+            className="w-full"
+          >
+            {isUpdatingPassword ? "Updating..." : "Update Password"}
+          </Button>
+        </CardContent>
+      </Card>
+      </TabsContent>
+    </Tabs>
   );
 }
