@@ -13,7 +13,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const { bible_translation, tts_voice, daily_reading_minutes } = await req.json();
+    const { bible_translation, tts_voice, daily_reading_minutes, enable_tts, verses_per_session } = await req.json();
 
     const { error } = await supabase
       .from("user_preferences")
@@ -22,6 +22,8 @@ export async function POST(req: Request) {
         bible_translation,
         tts_voice,
         daily_reading_minutes,
+        enable_tts: enable_tts ?? true,
+        verses_per_session: verses_per_session ?? 15,
       });
 
     if (error) {

@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
 import { Plus, Trash2, Save, BookOpen, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { createSupabaseClient } from "@/lib/supabase/client";
@@ -33,6 +34,8 @@ interface UserPreferences {
   bible_translation: string;
   tts_voice: string;
   daily_reading_minutes: number;
+  enable_tts: boolean;
+  verses_per_session: number;
 }
 
 interface ReadingProgress {
@@ -101,6 +104,13 @@ export default function SettingsForm({
   const [readingMinutes, setReadingMinutes] = useState(
     initialPreferences?.daily_reading_minutes || 10
   );
+  const [enableTts, setEnableTts] = useState(
+    initialPreferences?.enable_tts ?? true
+  );
+
+  // Calculate verses per session based on reading minutes
+  // Average reading speed: ~3 verses per minute
+  const versesPerSession = Math.round(readingMinutes * 3);
 
   // Family members state
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>(initialFamilyMembers);
@@ -171,6 +181,8 @@ export default function SettingsForm({
           bible_translation: translation,
           tts_voice: voice,
           daily_reading_minutes: readingMinutes,
+          enable_tts: enableTts,
+          verses_per_session: versesPerSession,
         }),
       });
 
@@ -410,24 +422,43 @@ export default function SettingsForm({
         </CardContent>
       </Card>
 
-      {/* Voice Style */}
+      {/* Text-to-Speech */}
       <Card>
         <CardHeader>
-          <CardTitle>Voice Style</CardTitle>
+          <CardTitle>Text-to-Speech (TTS)</CardTitle>
         </CardHeader>
-        <CardContent>
-          <Select value={voice} onValueChange={setVoice}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {TTS_VOICES.map((v) => (
-                <SelectItem key={v.id} value={v.id}>
-                  {v.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <Label htmlFor="enable-tts">Enable TTS Audio</Label>
+              <p className="text-sm text-muted-foreground">
+                Generate audio for Bible passages (disabling saves API costs)
+              </p>
+            </div>
+            <Switch
+              id="enable-tts"
+              checked={enableTts}
+              onCheckedChange={setEnableTts}
+            />
+          </div>
+
+          {enableTts && (
+            <div className="pt-4 border-t space-y-2">
+              <Label>Voice Style</Label>
+              <Select value={voice} onValueChange={setVoice}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {TTS_VOICES.map((v) => (
+                    <SelectItem key={v.id} value={v.id}>
+                      {v.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -438,7 +469,12 @@ export default function SettingsForm({
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
-            <Label>Estimated listening time</Label>
+            <div>
+              <Label>Reading time</Label>
+              <p className="text-sm text-muted-foreground mt-1">
+                ~{versesPerSession} verses per session
+              </p>
+            </div>
             <span className="text-2xl font-bold">{readingMinutes} min</span>
           </div>
           <Slider
@@ -450,7 +486,7 @@ export default function SettingsForm({
             className="w-full"
           />
           <p className="text-sm text-muted-foreground">
-            Adjust how much content you want to read each day
+            Based on average reading speed of 3 verses per minute
           </p>
         </CardContent>
       </Card>

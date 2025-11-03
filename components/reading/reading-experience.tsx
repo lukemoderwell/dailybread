@@ -32,6 +32,8 @@ interface ReadingExperienceProps {
   longestStreak: number;
   bibleTranslation: string;
   ttsVoice: string;
+  enableTts: boolean;
+  versesPerSession: number;
 }
 
 type ReadingState =
@@ -50,6 +52,8 @@ export default function ReadingExperience({
   currentStreak,
   bibleTranslation,
   ttsVoice,
+  enableTts,
+  versesPerSession,
 }: ReadingExperienceProps) {
   const router = useRouter();
   const [state, setState] = useState<ReadingState>("loading");
@@ -78,7 +82,8 @@ export default function ReadingExperience({
           body: JSON.stringify({
             book: currentBook,
             chapter: currentChapter,
-            translation: bibleTranslation
+            translation: bibleTranslation,
+            verses_per_session: versesPerSession,
           }),
         });
 
@@ -115,8 +120,10 @@ export default function ReadingExperience({
         const questionsData = await questionsRes.json();
         setQuestions(questionsData.questions);
 
-        // Preload scripture audio in the background
-        preloadAudio(cleanContent, passageData.reference);
+        // Preload scripture audio in the background only if TTS is enabled
+        if (enableTts) {
+          preloadAudio(cleanContent, passageData.reference);
+        }
 
         setState("ready");
       } catch (error) {
@@ -517,8 +524,8 @@ export default function ReadingExperience({
         </TabsContent>
       </Tabs>
 
-      {/* Floating Action Button for Audio Control */}
-      {(state === "ready" || state === "scripture-complete" || state === "playing-scripture") && (
+      {/* Floating Action Button for Audio Control - only show if TTS is enabled */}
+      {enableTts && (state === "ready" || state === "scripture-complete" || state === "playing-scripture") && (
         <div className="fixed bottom-6 right-6 z-50">
           {!isPlaying ? (
             <Button

@@ -6,6 +6,7 @@ interface BiblePassageRequest {
   book: string;
   chapter: number;
   translation?: string; // Default to KJV if not specified
+  verses_per_session?: number; // Number of verses to fetch (default: fetch whole chapter)
 }
 
 // Map book names to API.Bible book IDs
@@ -24,9 +25,9 @@ const BOOK_ID_MAP: Record<string, string> = {
 
 export async function POST(req: Request) {
   try {
-    const { book, chapter, translation = "de4e12af7f28f599-02" }: BiblePassageRequest = await req.json();
+    const { book, chapter, translation = "de4e12af7f28f599-02", verses_per_session }: BiblePassageRequest = await req.json();
 
-    console.log('Bible API request:', { book, chapter, translation });
+    console.log('Bible API request:', { book, chapter, translation, verses_per_session });
 
     const API_KEY = process.env.API_BIBLE_KEY;
     if (!API_KEY) {
@@ -38,7 +39,15 @@ export async function POST(req: Request) {
 
     // Convert book name to book ID
     const bookId = BOOK_ID_MAP[book] || book;
-    const passageId = `${bookId}.${chapter}`;
+
+    // If verses_per_session is specified, fetch only that many verses
+    // Otherwise, fetch the whole chapter
+    let passageId: string;
+    if (verses_per_session && verses_per_session > 0) {
+      passageId = `${bookId}.${chapter}.1-${bookId}.${chapter}.${verses_per_session}`;
+    } else {
+      passageId = `${bookId}.${chapter}`;
+    }
 
     console.log('Fetching passage:', passageId);
 
