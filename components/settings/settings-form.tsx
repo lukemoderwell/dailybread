@@ -9,10 +9,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Trash2, Save, BookOpen, RotateCcw, User } from "lucide-react";
+import { Plus, Trash2, Save, BookOpen, RotateCcw, User, Moon, Sun } from "lucide-react";
 import { toast } from "sonner";
 import { createSupabaseClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import { useTheme } from "next-themes";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -98,6 +99,7 @@ export default function SettingsForm({
 }: SettingsFormProps) {
   const router = useRouter();
   const supabase = createSupabaseClient();
+  const { theme, setTheme } = useTheme();
 
   // Profile state
   const [userName, setUserName] = useState(initialUserName || "");
@@ -624,6 +626,48 @@ export default function SettingsForm({
           >
             {isUpdatingPassword ? "Updating..." : "Update Profile"}
           </Button>
+        </CardContent>
+      </Card>
+
+      {/* Appearance */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Sun className="h-5 w-5" />
+            Appearance
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="theme">Theme</Label>
+            <Select value={theme} onValueChange={setTheme}>
+              <SelectTrigger id="theme">
+                <SelectValue placeholder="Select theme" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="light">
+                  <div className="flex items-center gap-2">
+                    <Sun className="h-4 w-4" />
+                    <span>Light</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="dark">
+                  <div className="flex items-center gap-2">
+                    <Moon className="h-4 w-4" />
+                    <span>Dark</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="system">
+                  <div className="flex items-center gap-2">
+                    <span>System</span>
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Choose how dailybread looks to you
+            </p>
+          </div>
         </CardContent>
       </Card>
 
