@@ -113,7 +113,7 @@ export function getChapterVerseCount(book: string, chapter: number): number | nu
 }
 
 export function getNextBook(currentBook: string): string | null {
-  const index = BIBLE_BOOKS.indexOf(currentBook);
+  const index = BIBLE_BOOKS.findIndex(book => book === currentBook);
   if (index === -1 || index === BIBLE_BOOKS.length - 1) return null;
   return BIBLE_BOOKS[index + 1];
 }

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
@@ -32,6 +33,7 @@ interface FamilyMember {
   name: string;
   age: number;
   color: string;
+  notes?: string | null;
 }
 
 interface UserPreferences {
@@ -193,7 +195,7 @@ export default function SettingsForm({
 
   const handleUpdateMemberColor = async (id: string, colorId: string) => {
     try {
-      const { error } = await supabase
+      const { error} = await supabase
         .from("family_members")
         .update({ color: colorId })
         .eq("id", id);
@@ -209,6 +211,26 @@ export default function SettingsForm({
     } catch (error) {
       console.error("Error updating color:", error);
       toast.error("Failed to update color");
+    }
+  };
+
+  const handleUpdateMemberNotes = async (id: string, notes: string) => {
+    try {
+      const { error } = await supabase
+        .from("family_members")
+        .update({ notes: notes || null })
+        .eq("id", id);
+
+      if (error) throw error;
+
+      setFamilyMembers(familyMembers.map(m =>
+        m.id === id ? { ...m, notes } : m
+      ));
+
+      toast.success("Notes saved");
+    } catch (error) {
+      console.error("Error updating notes:", error);
+      toast.error("Failed to save notes");
     }
   };
 
@@ -567,63 +589,90 @@ export default function SettingsForm({
             return (
               <div
                 key={member.id}
-                className="flex items-center gap-3 p-4 border rounded-lg"
+                className="p-4 border rounded-lg space-y-3"
               >
-                {/* Color indicator */}
-                <div
-                  className="w-12 h-12 rounded-full flex items-center justify-center text-xl font-bold"
-                  style={{
-                    backgroundColor: memberColor.value,
-                    color: memberColor.textColor,
-                  }}
-                >
-                  {member.name.charAt(0).toUpperCase()}
-                </div>
-
-                {/* Member info and color picker */}
-                <div className="flex-1 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-semibold">{member.name}</p>
-                      <p className="text-sm text-muted-foreground">Age {member.age}</p>
-                    </div>
+                {/* Header: Avatar, Name, Color, Delete */}
+                <div className="flex items-center gap-3">
+                  {/* Color indicator */}
+                  <div
+                    className="w-12 h-12 rounded-full flex items-center justify-center text-xl font-bold flex-shrink-0"
+                    style={{
+                      backgroundColor: memberColor.value,
+                      color: memberColor.textColor,
+                    }}
+                  >
+                    {member.name.charAt(0).toUpperCase()}
                   </div>
 
-                  {/* Color picker */}
-                  <div className="flex items-center gap-2">
-                    <Palette className="h-4 w-4 text-muted-foreground" />
-                    <Select
-                      value={member.color}
-                      onValueChange={(colorId) => handleUpdateMemberColor(member.id, colorId)}
-                    >
-                      <SelectTrigger className="h-8 w-[140px]">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {FAMILY_COLORS.map((color) => (
-                          <SelectItem key={color.id} value={color.id}>
-                            <div className="flex items-center gap-2">
-                              <div
-                                className="w-4 h-4 rounded-full border"
-                                style={{ backgroundColor: color.value }}
-                              />
-                              <span>{color.name}</span>
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                  {/* Name and age */}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold truncate">{member.name}</p>
+                    <p className="text-sm text-muted-foreground">Age {member.age}</p>
                   </div>
+
+                  {/* Color picker - simple circle selector */}
+                  <Select
+                    value={member.color}
+                    onValueChange={(colorId) => handleUpdateMemberColor(member.id, colorId)}
+                  >
+                    <SelectTrigger className="w-10 h-10 p-0 border-0 rounded-full flex-shrink-0 [&>svg]:hidden">
+                      <div
+                        className="w-10 h-10 rounded-full border-2 border-border/50"
+                        style={{ backgroundColor: memberColor.value }}
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {FAMILY_COLORS.map((color) => (
+                        <SelectItem key={color.id} value={color.id}>
+                          <div className="flex items-center gap-2">
+                            <div
+                              className="w-5 h-5 rounded-full border-2"
+                              style={{ backgroundColor: color.value }}
+                            />
+                            <span>{color.name}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  {/* Remove button */}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-10 w-10 flex-shrink-0"
+                    onClick={() => handleRemoveFamilyMember(member.id, member.name)}
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
                 </div>
 
-                {/* Remove button */}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleRemoveFamilyMember(member.id, member.name)}
-                >
-                  <Trash2 className="h-4 w-4 text-destructive" />
-                </Button>
+                {/* Notes field - full width below */}
+                <div className="space-y-2">
+                  <Label htmlFor={`notes-${member.id}`} className="text-sm font-medium">
+                    Notes (optional)
+                  </Label>
+                  <Textarea
+                    id={`notes-${member.id}`}
+                    placeholder="Interests, personality, what they're working on..."
+                    value={member.notes || ""}
+                    onChange={(e) => {
+                      // Update local state immediately for responsiveness
+                      setFamilyMembers(familyMembers.map(m =>
+                        m.id === member.id ? { ...m, notes: e.target.value } : m
+                      ));
+                    }}
+                    onBlur={(e) => {
+                      // Save to database on blur
+                      handleUpdateMemberNotes(member.id, e.target.value);
+                    }}
+                    className="min-h-[80px] resize-none"
+                    maxLength={500}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Helps create personalized discussion questions
+                  </p>
+                </div>
               </div>
             );
           })}
