@@ -45,6 +45,7 @@ export default async function TodayPage() {
         familyMembers={familyMembers}
         currentBook={progress.current_book}
         currentChapter={progress.current_chapter}
+        currentVerse={progress.current_verse || 1}
         currentStreak={progress.current_streak}
         longestStreak={progress.longest_streak}
         bibleTranslation={preferences?.bible_translation || "de4e12af7f28f599-02"}

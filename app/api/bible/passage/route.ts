@@ -1,33 +1,62 @@
 import { NextResponse } from "next/server";
+import {
+  getChapterVerseCount,
+  calculateEndingPosition,
+  getTotalChapters,
+  BOOK_ID_MAP,
+  type VersePosition
+} from "@/lib/bible-metadata";
 
 export const runtime = "edge";
 
 interface BiblePassageRequest {
   book: string;
   chapter: number;
+  verse?: number; // Starting verse (default: 1)
   translation?: string; // Default to KJV if not specified
   verses_per_session?: number; // Number of verses to fetch (default: fetch whole chapter)
 }
 
-// Map book names to API.Bible book IDs
-const BOOK_ID_MAP: Record<string, string> = {
-  "Genesis": "GEN",
-  "Proverbs": "PRO",
-  "Psalms": "PSA",
-  "John": "JHN",
-  "James": "JAS",
-  "Philippians": "PHP",
-  "1 Peter": "1PE",
-  "Mark": "MRK",
-  "Ephesians": "EPH",
-  "Colossians": "COL",
-};
+async function fetchPassageSegment(
+  bookId: string,
+  chapter: number,
+  startVerse: number,
+  endVerse: number,
+  translation: string,
+  apiKey: string
+): Promise<{ content: string; reference: string } | null> {
+  const passageId = `${bookId}.${chapter}.${startVerse}-${bookId}.${chapter}.${endVerse}`;
+  const apiUrl = `https://rest.api.bible/v1/bibles/${translation}/passages/${passageId}`;
+
+  console.log('Fetching segment:', passageId);
+
+  const response = await fetch(apiUrl, {
+    headers: { "api-key": apiKey },
+  });
+
+  if (!response.ok) {
+    console.error('Failed to fetch segment:', passageId, response.status);
+    return null;
+  }
+
+  const data = await response.json();
+  return {
+    content: data.data.content,
+    reference: data.data.reference,
+  };
+}
 
 export async function POST(req: Request) {
   try {
-    const { book, chapter, translation = "de4e12af7f28f599-02", verses_per_session }: BiblePassageRequest = await req.json();
+    const {
+      book,
+      chapter,
+      verse = 1,
+      translation = "de4e12af7f28f599-02",
+      verses_per_session
+    }: BiblePassageRequest = await req.json();
 
-    console.log('Bible API request:', { book, chapter, translation, verses_per_session });
+    console.log('Bible API request:', { book, chapter, verse, translation, verses_per_session });
 
     const API_KEY = process.env.API_BIBLE_KEY;
     if (!API_KEY) {
@@ -38,48 +67,130 @@ export async function POST(req: Request) {
     }
 
     // Convert book name to book ID
-    const bookId = BOOK_ID_MAP[book] || book;
-
-    // If verses_per_session is specified, fetch only that many verses
-    // Otherwise, fetch the whole chapter
-    let passageId: string;
-    if (verses_per_session && verses_per_session > 0) {
-      passageId = `${bookId}.${chapter}.1-${bookId}.${chapter}.${verses_per_session}`;
-    } else {
-      passageId = `${bookId}.${chapter}`;
-    }
-
-    console.log('Fetching passage:', passageId);
-
-    // Fetch passage from API.Bible
-    const apiUrl = `https://rest.api.bible/v1/bibles/${translation}/passages/${passageId}`;
-    console.log('API URL:', apiUrl);
-
-    const response = await fetch(apiUrl, {
-      headers: {
-        "api-key": API_KEY,
-      },
-    });
-
-    console.log('API.Bible response status:', response.status);
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error('API.Bible error:', errorData);
+    const bookId = BOOK_ID_MAP[book];
+    if (!bookId) {
       return NextResponse.json(
-        { error: "Failed to fetch Bible passage", details: errorData },
-        { status: response.status }
+        { error: `Unknown book: ${book}` },
+        { status: 400 }
       );
     }
 
-    const data = await response.json();
+    // If no verses_per_session, fetch whole chapter from starting verse
+    if (!verses_per_session || verses_per_session <= 0) {
+      const chapterVerseCount = getChapterVerseCount(book, chapter);
+      if (!chapterVerseCount) {
+        return NextResponse.json(
+          { error: `Invalid chapter for ${book}` },
+          { status: 400 }
+        );
+      }
+
+      const segment = await fetchPassageSegment(bookId, chapter, verse, chapterVerseCount, translation, API_KEY);
+      if (!segment) {
+        return NextResponse.json(
+          { error: "Failed to fetch passage" },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json({
+        book,
+        chapter,
+        verse,
+        ending_book: book,
+        ending_chapter: chapter,
+        ending_verse: chapterVerseCount,
+        verses_read: chapterVerseCount - verse + 1,
+        translation,
+        content: segment.content,
+        reference: segment.reference,
+      });
+    }
+
+    // Calculate ending position
+    const startPos: VersePosition = { book, chapter, verse };
+    const endPos = calculateEndingPosition(startPos, verses_per_session);
+
+    if (!endPos) {
+      return NextResponse.json(
+        { error: "Failed to calculate ending position" },
+        { status: 500 }
+      );
+    }
+
+    console.log('Calculated ending position:', endPos);
+
+    // Fetch passage segments
+    const segments: string[] = [];
+    let currentBook = book;
+    let currentChapter = chapter;
+    let currentVerse = verse;
+
+    while (
+      currentBook !== endPos.book ||
+      currentChapter !== endPos.chapter ||
+      currentVerse <= endPos.verse
+    ) {
+      const currentBookId = BOOK_ID_MAP[currentBook];
+      const chapterVerseCount = getChapterVerseCount(currentBook, currentChapter);
+
+      if (!chapterVerseCount) break;
+
+      // Determine end verse for this segment
+      let segmentEndVerse: number;
+      if (currentBook === endPos.book && currentChapter === endPos.chapter) {
+        // Last segment
+        segmentEndVerse = endPos.verse;
+      } else {
+        // Read to end of chapter
+        segmentEndVerse = chapterVerseCount;
+      }
+
+      // Fetch this segment
+      const segment = await fetchPassageSegment(
+        currentBookId,
+        currentChapter,
+        currentVerse,
+        segmentEndVerse,
+        translation,
+        API_KEY
+      );
+
+      if (segment) {
+        segments.push(segment.content);
+      }
+
+      // Check if we're done
+      if (currentBook === endPos.book && currentChapter === endPos.chapter) {
+        break;
+      }
+
+      // Move to next chapter
+      const totalChapters = getTotalChapters(currentBook);
+      if (totalChapters && currentChapter < totalChapters) {
+        currentChapter++;
+        currentVerse = 1;
+      } else {
+        // Move to next book (for now, just break - book transitions handled elsewhere)
+        break;
+      }
+    }
+
+    // Concatenate all segments
+    const combinedContent = segments.join('\n\n');
+    const reference = `${book} ${chapter}:${verse}-${endPos.chapter}:${endPos.verse}`;
 
     return NextResponse.json({
       book,
       chapter,
+      verse,
+      ending_book: endPos.book,
+      ending_chapter: endPos.chapter,
+      ending_verse: endPos.verse,
+      verses_read: verses_per_session,
       translation,
-      content: data.data.content,
-      reference: data.data.reference,
+      content: combinedContent,
+      reference,
     });
   } catch (error) {
     console.error("Bible passage fetch error:", error);

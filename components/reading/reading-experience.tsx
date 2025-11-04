@@ -4,12 +4,13 @@ import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Play, Pause, Check, Flame, Settings } from "lucide-react";
+import { Play, Pause, Check, Flame, Settings, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { createSupabaseClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getColorById } from "@/lib/colors";
+import { calculateEndingPosition, type VersePosition } from "@/lib/bible-metadata";
 
 interface FamilyMember {
   id: string;
@@ -31,6 +32,7 @@ interface ReadingExperienceProps {
   familyMembers: FamilyMember[];
   currentBook: string;
   currentChapter: number;
+  currentVerse: number;
   currentStreak: number;
   longestStreak: number;
   bibleTranslation: string;
@@ -52,6 +54,7 @@ export default function ReadingExperience({
   familyMembers,
   currentBook,
   currentChapter,
+  currentVerse,
   currentStreak,
   bibleTranslation,
   ttsVoice,
@@ -75,10 +78,104 @@ export default function ReadingExperience({
   const [currentVerseIndex, setCurrentVerseIndex] = useState<number>(-1);
   const [wordTimestamps, setWordTimestamps] = useState<Array<{word: string, startSecond: number, endSecond: number}>>([]);
 
-  // Load today's passage and generate questions
+  // Track passage metadata for sequential reading
+  const [passageMetadata, setPassageMetadata] = useState<{
+    startBook: string;
+    startChapter: number;
+    startVerse: number;
+    endingBook: string;
+    endingChapter: number;
+    endingVerse: number;
+    versesRead: number;
+  } | null>(null);
+
+  // Session navigation state
+  const [currentSessionId, setCurrentSessionId] = useState<number | null>(null);
+  const [isHistoricalView, setIsHistoricalView] = useState(false);
+  const [sessionSummary, setSessionSummary] = useState<string>("");
+  const [isLoadingSummary, setIsLoadingSummary] = useState(false);
+  const [navigationMeta, setNavigationMeta] = useState<{
+    hasPrevious: boolean;
+    hasNext: boolean;
+    previousId: number | null;
+    nextId: number | null;
+  }>({
+    hasPrevious: false,
+    hasNext: false,
+    previousId: null,
+    nextId: null,
+  });
+
+  // Load session data (either current reading or historical session)
   useEffect(() => {
     async function loadContent() {
       try {
+        // Reset state when starting to load
+        setPassage("");
+        setReference("");
+        setQuestions([]);
+        setPassageMetadata(null);
+        setSessionSummary("");
+
+        // If viewing a historical session, load that session's data
+        if (currentSessionId !== null) {
+          const sessionRes = await fetch("/api/bible/sessions", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ sessionId: currentSessionId }),
+          });
+
+          if (!sessionRes.ok) throw new Error("Failed to fetch session");
+
+          const sessionData = await sessionRes.json();
+
+          // Set historical session data
+          setPassage(sessionData.session.content.scripture_text);
+          setReference(sessionData.session.content.reference);
+          setQuestions(sessionData.session.content.questions || []);
+          setIsHistoricalView(true);
+          setNavigationMeta(sessionData.navigation);
+          setState("ready");
+          setIsLoadingQuestions(false);
+
+          // Check if we have a cached summary
+          if (sessionData.session.summary) {
+            // Use cached summary
+            setSessionSummary(sessionData.session.summary);
+            setIsLoadingSummary(false);
+          } else {
+            // Generate summary in the background
+            setIsLoadingSummary(true);
+            fetch("/api/bible/summarize-session", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                sessionId: sessionData.session.id,
+                reference: sessionData.session.content.reference,
+                questions: sessionData.session.content.questions || [],
+              }),
+            })
+              .then(async (summaryRes) => {
+                if (summaryRes.ok) {
+                  const summaryData = await summaryRes.json();
+                  setSessionSummary(summaryData.summary);
+                }
+              })
+              .catch((error) => {
+                console.error("Summary generation failed:", error);
+              })
+              .finally(() => {
+                setIsLoadingSummary(false);
+              });
+          }
+
+          return;
+        }
+
+        // Otherwise, load current reading (today's reading)
+        setIsHistoricalView(false);
+        setIsLoadingQuestions(true);
+
         // Fetch Bible passage first (fastest, unblocks UI)
         const passageRes = await fetch("/api/bible/passage", {
           method: "POST",
@@ -86,6 +183,7 @@ export default function ReadingExperience({
           body: JSON.stringify({
             book: currentBook,
             chapter: currentChapter,
+            verse: currentVerse,
             translation: bibleTranslation,
             verses_per_session: versesPerSession,
           }),
@@ -102,6 +200,17 @@ export default function ReadingExperience({
 
         setPassage(htmlContent);
         setReference(passageData.reference);
+
+        // Store passage metadata for completion tracking
+        setPassageMetadata({
+          startBook: passageData.book,
+          startChapter: passageData.chapter,
+          startVerse: passageData.verse,
+          endingBook: passageData.ending_book,
+          endingChapter: passageData.ending_chapter,
+          endingVerse: passageData.ending_verse,
+          versesRead: passageData.verses_read,
+        });
 
         // For verse tracking (TTS highlighting), extract plain text
         const plainText = htmlContent.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
@@ -138,6 +247,18 @@ export default function ReadingExperience({
 
           // Preload scripture audio if TTS is enabled
           enableTts ? preloadAudio(plainText, passageData.reference) : Promise.resolve(),
+
+          // Fetch navigation metadata for current reading
+          fetch("/api/bible/sessions", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({}), // No sessionId = current reading
+          }).then(async (navRes) => {
+            if (navRes.ok) {
+              const navData = await navRes.json();
+              setNavigationMeta(navData.navigation);
+            }
+          }),
         ]).catch((error) => {
           console.error("Error loading questions/audio:", error);
           setIsLoadingQuestions(false);
@@ -151,7 +272,7 @@ export default function ReadingExperience({
     }
 
     loadContent();
-  }, [currentBook, currentChapter, familyMembers, bibleTranslation, ttsVoice]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [currentBook, currentChapter, currentVerse, familyMembers, bibleTranslation, ttsVoice, currentSessionId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Generate cache key for audio
   const generateCacheKey = (text: string, voice: string): string => {
@@ -389,26 +510,78 @@ export default function ReadingExperience({
     }
   };
 
+  // Session navigation handlers
+  const navigateToPrevious = () => {
+    if (navigationMeta.previousId) {
+      setState("loading");
+      setCurrentSessionId(navigationMeta.previousId);
+    }
+  };
+
+  const navigateToNext = () => {
+    setState("loading");
+    if (navigationMeta.nextId) {
+      setCurrentSessionId(navigationMeta.nextId);
+    } else {
+      // Navigate to current reading (today)
+      setCurrentSessionId(null);
+      setIsHistoricalView(false);
+    }
+  };
 
   const completeReading = async () => {
     try {
+      if (!passageMetadata) {
+        toast.error("Session data not loaded yet");
+        return;
+      }
+
       const supabase = createSupabaseClient();
 
-      // Save session
+      // Save session with ending position metadata
       await supabase.from("reading_sessions").insert({
         user_id: userId,
-        book: currentBook,
-        chapter: currentChapter,
+        book: passageMetadata.startBook,
+        chapter: passageMetadata.startChapter,
+        verses_read: passageMetadata.versesRead,
         content: {
           scripture_text: passage,
           reference: reference,
           questions: questions,
+          ending_book: passageMetadata.endingBook,
+          ending_chapter: passageMetadata.endingChapter,
+          ending_verse: passageMetadata.endingVerse,
         },
       });
 
+      // Calculate next starting position (one verse after where we ended)
+      const currentEndPos: VersePosition = {
+        book: passageMetadata.endingBook,
+        chapter: passageMetadata.endingChapter,
+        verse: passageMetadata.endingVerse,
+      };
+
+      const nextStartPos = calculateEndingPosition(currentEndPos, 1);
+
+      if (!nextStartPos) {
+        // We've reached the end of the Bible - wrap around to Genesis 1:1
+        await supabase.from("reading_progress").update({
+          current_book: "Genesis",
+          current_chapter: 1,
+          current_verse: 1,
+        }).eq("user_id", userId);
+      } else {
+        // Update reading_progress with next starting position
+        await supabase.from("reading_progress").update({
+          current_book: nextStartPos.book,
+          current_chapter: nextStartPos.chapter,
+          current_verse: nextStartPos.verse,
+        }).eq("user_id", userId);
+      }
+
       toast.success("Great job! See you tomorrow!");
 
-      // Refresh to get new chapter
+      // Refresh to get new reading
       router.refresh();
     } catch (error) {
       console.error("Complete reading error:", error);
@@ -456,11 +629,35 @@ export default function ReadingExperience({
 
   return (
     <div className="max-w-4xl mx-auto p-4 pb-24 space-y-6">
-      {/* Header with streak */}
+      {/* Header with streak and navigation */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Today&apos;s Reading</h1>
-          <p className="text-muted-foreground text-sm">{reference}</p>
+        <div className="flex items-center gap-3">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={navigateToPrevious}
+            disabled={!navigationMeta.hasPrevious}
+            className="h-8 w-8"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold">
+              {isHistoricalView ? "Previous Reading" : "Today's Reading"}
+            </h1>
+            <p className="text-muted-foreground text-sm">{reference}</p>
+          </div>
+          {isHistoricalView && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={navigateToNext}
+              disabled={!navigationMeta.hasNext}
+              className="h-8 w-8"
+            >
+              <ChevronRight className="h-5 w-5" />
+            </Button>
+          )}
         </div>
         <div className="flex items-center gap-4">
           <Link href="/settings">
@@ -477,6 +674,25 @@ export default function ReadingExperience({
           </div>
         </div>
       </div>
+
+      {isHistoricalView && (
+        <div className="bg-muted/50 border border-muted rounded-lg p-4 space-y-2">
+          {isLoadingSummary ? (
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground mb-2">Loading summary...</p>
+              <div className="h-4 bg-muted animate-pulse rounded w-3/4"></div>
+              <div className="h-4 bg-muted animate-pulse rounded w-full"></div>
+              <div className="h-4 bg-muted animate-pulse rounded w-5/6"></div>
+            </div>
+          ) : sessionSummary ? (
+            <p className="text-sm leading-relaxed">{sessionSummary}</p>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              You&apos;re viewing a previous reading. Use the arrows above to navigate back to today&apos;s reading.
+            </p>
+          )}
+        </div>
+      )}
 
       <Tabs defaultValue="scripture" className="w-full">
         <TabsList className="grid w-full grid-cols-2 h-12">
@@ -634,7 +850,7 @@ export default function ReadingExperience({
                   );
                 })}
 
-                {questions.length > 0 && (
+                {questions.length > 0 && !isHistoricalView && (
                   <Button
                     size="lg"
                     onClick={completeReading}
