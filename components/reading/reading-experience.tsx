@@ -75,7 +75,6 @@ export default function ReadingExperience({
   const [isPreloadingAudio, setIsPreloadingAudio] = useState(false);
   const [answeredQuestions, setAnsweredQuestions] = useState<Set<number>>(new Set());
   const [verses, setVerses] = useState<string[]>([]);
-  const [currentVerseIndex, setCurrentVerseIndex] = useState<number>(-1);
   const [wordTimestamps, setWordTimestamps] = useState<Array<{word: string, startSecond: number, endSecond: number}>>([]);
 
   // Track passage metadata for sequential reading
@@ -428,7 +427,6 @@ export default function ReadingExperience({
 
     audio.onended = () => {
       setIsPlaying(false);
-      setCurrentVerseIndex(-1); // Reset highlighting
       if (type === "scripture") {
         setState("scripture-complete");
       } else {
@@ -444,47 +442,11 @@ export default function ReadingExperience({
 
     audio.onerror = () => {
       setIsPlaying(false);
-      setCurrentVerseIndex(-1);
       toast.error("Audio playback failed");
     };
 
-    // For scripture, highlight verses using timestamps if available
-    if (type === "scripture" && verses.length > 0) {
-      if (wordTimestamps.length > 0) {
-        // Use accurate word timestamps to find current verse
-        audio.ontimeupdate = () => {
-          const currentTime = audio.currentTime;
-
-          // Find the current word being spoken
-          const currentWordIndex = wordTimestamps.findIndex((wt, idx) => {
-            const nextWord = wordTimestamps[idx + 1];
-            return currentTime >= wt.startSecond && (!nextWord || currentTime < nextWord.startSecond);
-          });
-
-          if (currentWordIndex >= 0) {
-            // Map word index to verse index
-            let wordCount = 0;
-            for (let i = 0; i < verses.length; i++) {
-              const verseWordCount = verses[i].split(/\s+/).length;
-              if (currentWordIndex < wordCount + verseWordCount) {
-                setCurrentVerseIndex(i);
-                break;
-              }
-              wordCount += verseWordCount;
-            }
-          }
-        };
-      } else {
-        // Fallback to progress-based estimation
-        audio.ontimeupdate = () => {
-          if (audio.duration && !isNaN(audio.duration) && audio.duration > 0) {
-            const progress = audio.currentTime / audio.duration;
-            const verseIndex = Math.floor(progress * verses.length);
-            setCurrentVerseIndex(Math.min(verseIndex, verses.length - 1));
-          }
-        };
-      }
-    }
+    // Note: Verse highlighting during TTS playback has been removed
+    // Could be re-enabled in the future if needed
 
     audio.play();
 

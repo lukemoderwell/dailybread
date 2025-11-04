@@ -122,7 +122,7 @@ export async function POST(req: Request) {
 
     // Fetch passage segments
     const segments: string[] = [];
-    let currentBook = book;
+    const currentBook = book;
     let currentChapter = chapter;
     let currentVerse = verse;
 
