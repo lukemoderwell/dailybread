@@ -9,11 +9,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Trash2, Save, BookOpen, RotateCcw, User, Moon, Sun } from "lucide-react";
+import { Plus, Trash2, Save, BookOpen, RotateCcw, User, Moon, Sun, Palette } from "lucide-react";
 import { toast } from "sonner";
 import { createSupabaseClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
+import { FAMILY_COLORS, getNextAvailableColor, getColorById } from "@/lib/colors";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,6 +31,7 @@ interface FamilyMember {
   id: string;
   name: string;
   age: number;
+  color: string;
 }
 
 interface UserPreferences {
@@ -145,12 +147,17 @@ export default function SettingsForm({
     }
 
     try {
+      // Get next available color
+      const usedColors = familyMembers.map(m => m.color);
+      const assignedColor = getNextAvailableColor(usedColors);
+
       const { data, error } = await supabase
         .from("family_members")
         .insert({
           user_id: userId,
           name: newMemberName,
           age: parseInt(newMemberAge),
+          color: assignedColor.id,
         })
         .select()
         .single();
@@ -181,6 +188,27 @@ export default function SettingsForm({
     } catch (error) {
       console.error("Error removing family member:", error);
       toast.error("Failed to remove family member");
+    }
+  };
+
+  const handleUpdateMemberColor = async (id: string, colorId: string) => {
+    try {
+      const { error } = await supabase
+        .from("family_members")
+        .update({ color: colorId })
+        .eq("id", id);
+
+      if (error) throw error;
+
+      setFamilyMembers(familyMembers.map(m =>
+        m.id === id ? { ...m, color: colorId } : m
+      ));
+
+      const colorName = getColorById(colorId).name;
+      toast.success(`Color updated to ${colorName}`);
+    } catch (error) {
+      console.error("Error updating color:", error);
+      toast.error("Failed to update color");
     }
   };
 
@@ -534,24 +562,71 @@ export default function SettingsForm({
           <CardTitle>Family Members</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {familyMembers.map((member) => (
-            <div
-              key={member.id}
-              className="flex items-center justify-between p-3 border rounded-lg"
-            >
-              <div>
-                <p className="font-semibold">{member.name}</p>
-                <p className="text-sm text-muted-foreground">Age {member.age}</p>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleRemoveFamilyMember(member.id, member.name)}
+          {familyMembers.map((member) => {
+            const memberColor = getColorById(member.color);
+            return (
+              <div
+                key={member.id}
+                className="flex items-center gap-3 p-4 border rounded-lg"
               >
-                <Trash2 className="h-4 w-4 text-destructive" />
-              </Button>
-            </div>
-          ))}
+                {/* Color indicator */}
+                <div
+                  className="w-12 h-12 rounded-full flex items-center justify-center text-xl font-bold"
+                  style={{
+                    backgroundColor: memberColor.value,
+                    color: memberColor.textColor,
+                  }}
+                >
+                  {member.name.charAt(0).toUpperCase()}
+                </div>
+
+                {/* Member info and color picker */}
+                <div className="flex-1 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-semibold">{member.name}</p>
+                      <p className="text-sm text-muted-foreground">Age {member.age}</p>
+                    </div>
+                  </div>
+
+                  {/* Color picker */}
+                  <div className="flex items-center gap-2">
+                    <Palette className="h-4 w-4 text-muted-foreground" />
+                    <Select
+                      value={member.color}
+                      onValueChange={(colorId) => handleUpdateMemberColor(member.id, colorId)}
+                    >
+                      <SelectTrigger className="h-8 w-[140px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {FAMILY_COLORS.map((color) => (
+                          <SelectItem key={color.id} value={color.id}>
+                            <div className="flex items-center gap-2">
+                              <div
+                                className="w-4 h-4 rounded-full border"
+                                style={{ backgroundColor: color.value }}
+                              />
+                              <span>{color.name}</span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Remove button */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleRemoveFamilyMember(member.id, member.name)}
+                >
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
+              </div>
+            );
+          })}
 
           <div className="flex gap-2 pt-4 border-t">
             <Input

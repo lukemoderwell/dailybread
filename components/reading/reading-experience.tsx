@@ -9,17 +9,20 @@ import { toast } from "sonner";
 import { createSupabaseClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { getColorById } from "@/lib/colors";
 
 interface FamilyMember {
   id: string;
   name: string;
   age: number;
+  color: string;
 }
 
 interface Question {
   familyMemberId: string;
   name: string;
   age: number;
+  color: string;
   question: string;
 }
 
@@ -579,40 +582,57 @@ export default function ReadingExperience({
             ) : (
               // Actual questions
               <>
-                {questions.map((question, index) => (
-                  <Card
-                    key={question.familyMemberId}
-                    className={answeredQuestions.has(index) ? "opacity-60" : ""}
-                  >
-                    <CardContent className="pt-6">
-                      <div className="space-y-4">
-                        <div className="flex items-start gap-4">
-                          <button
-                            onClick={() => toggleQuestion(index)}
-                            className="mt-1 flex-shrink-0"
-                          >
-                            <div className={`w-6 h-6 rounded border-2 flex items-center justify-center transition-colors ${
-                              answeredQuestions.has(index)
-                                ? "bg-primary border-primary"
-                                : "border-muted-foreground"
-                            }`}>
-                              {answeredQuestions.has(index) && (
-                                <Check className="h-4 w-4 text-primary-foreground" />
-                              )}
+                {questions.map((question, index) => {
+                  const memberColor = getColorById(question.color);
+                  return (
+                    <Card
+                      key={question.familyMemberId}
+                      className={answeredQuestions.has(index) ? "opacity-60" : ""}
+                      style={{
+                        borderLeft: `4px solid ${memberColor.value}`,
+                      }}
+                    >
+                      <CardContent className="pt-6">
+                        <div className="space-y-4">
+                          <div className="flex items-start gap-4">
+                            <button
+                              onClick={() => toggleQuestion(index)}
+                              className="mt-1 flex-shrink-0"
+                            >
+                              <div
+                                className={`w-6 h-6 rounded border-2 flex items-center justify-center transition-colors`}
+                                style={{
+                                  backgroundColor: answeredQuestions.has(index) ? memberColor.value : 'transparent',
+                                  borderColor: memberColor.value,
+                                }}
+                              >
+                                {answeredQuestions.has(index) && (
+                                  <Check className="h-4 w-4" style={{ color: memberColor.textColor }} />
+                                )}
+                              </div>
+                            </button>
+                            <div className="flex-1">
+                              <div className="flex items-center gap-3 mb-2">
+                                <div
+                                  className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
+                                  style={{
+                                    backgroundColor: memberColor.value,
+                                    color: memberColor.textColor,
+                                  }}
+                                >
+                                  {question.name.charAt(0).toUpperCase()}
+                                </div>
+                                <h3 className="text-xl font-semibold">{question.name}</h3>
+                                <span className="text-sm text-muted-foreground">Age {question.age}</span>
+                              </div>
+                              <p className="text-lg leading-relaxed">{question.question}</p>
                             </div>
-                          </button>
-                          <div className="flex-1">
-                            <div className="flex items-center justify-between mb-2">
-                              <h3 className="text-xl font-semibold">{question.name}</h3>
-                              <span className="text-sm text-muted-foreground">Age {question.age}</span>
-                            </div>
-                            <p className="text-lg leading-relaxed">{question.question}</p>
                           </div>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
 
                 {questions.length > 0 && (
                   <Button
