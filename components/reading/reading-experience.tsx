@@ -12,6 +12,9 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
+  ThumbsUp,
+  ThumbsDown,
+  MoreHorizontal,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { createSupabaseClient } from '@/lib/supabase/client';
@@ -22,6 +25,21 @@ import {
   calculateEndingPosition,
   type VersePosition,
 } from '@/lib/bible-metadata';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 interface FamilyMember {
   id: string;
@@ -89,6 +107,14 @@ export default function ReadingExperience({
   const [answeredQuestions, setAnsweredQuestions] = useState<Set<number>>(
     new Set()
   );
+  const [questionFeedback, setQuestionFeedback] = useState<
+    Map<string, { rating: 1 | -1; text?: string }>
+  >(new Map());
+  const [feedbackDialogOpen, setFeedbackDialogOpen] = useState(false);
+  const [selectedQuestionForFeedback, setSelectedQuestionForFeedback] =
+    useState<Question | null>(null);
+  const [feedbackText, setFeedbackText] = useState('');
+  const [isRegenerating, setIsRegenerating] = useState(false);
   const [verses, setVerses] = useState<string[]>([]);
   const [wordTimestamps, setWordTimestamps] = useState<
     Array<{ word: string; startSecond: number; endSecond: number }>
@@ -459,6 +485,96 @@ export default function ReadingExperience({
     setAnsweredQuestions(newAnswered);
   };
 
+  const handleQuestionFeedback = (question: Question, rating: 1 | -1) => {
+    const currentFeedback = questionFeedback.get(question.familyMemberId);
+
+    // Toggle off if clicking same rating
+    if (currentFeedback?.rating === rating) {
+      const newFeedback = new Map(questionFeedback);
+      newFeedback.delete(question.familyMemberId);
+      setQuestionFeedback(newFeedback);
+      return;
+    }
+
+    // For thumbs up, just set rating
+    if (rating === 1) {
+      const newFeedback = new Map(questionFeedback);
+      newFeedback.set(question.familyMemberId, { rating: 1 });
+      setQuestionFeedback(newFeedback);
+      return;
+    }
+
+    // For thumbs down, show feedback dialog
+    setSelectedQuestionForFeedback(question);
+    setFeedbackText(currentFeedback?.text || '');
+    setFeedbackDialogOpen(true);
+  };
+
+  const handleRegenerateQuestion = async () => {
+    if (!selectedQuestionForFeedback) return;
+
+    setIsRegenerating(true);
+
+    try {
+      // Get all other questions for context
+      const otherQuestions = questions
+        .filter(
+          (q) => q.familyMemberId !== selectedQuestionForFeedback.familyMemberId
+        )
+        .map((q) => q.question);
+
+      const response = await fetch('/api/bible/regenerate-question', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          passage: passage
+            .replace(/<[^>]*>/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim(),
+          reference,
+          familyMember: {
+            id: selectedQuestionForFeedback.familyMemberId,
+            name: selectedQuestionForFeedback.name,
+            age: selectedQuestionForFeedback.age,
+            color: selectedQuestionForFeedback.color,
+          },
+          previousQuestion: selectedQuestionForFeedback.question,
+          feedback: feedbackText || undefined,
+          allQuestions: otherQuestions,
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to regenerate question');
+
+      const { question: newQuestion } = await response.json();
+
+      // Update the question in the questions array
+      setQuestions(
+        questions.map((q) =>
+          q.familyMemberId === selectedQuestionForFeedback.familyMemberId
+            ? { ...q, question: newQuestion }
+            : q
+        )
+      );
+
+      // Set thumbs down feedback with text
+      const newFeedback = new Map(questionFeedback);
+      newFeedback.set(selectedQuestionForFeedback.familyMemberId, {
+        rating: -1,
+        text: feedbackText || undefined,
+      });
+      setQuestionFeedback(newFeedback);
+
+      toast.success('Question regenerated!');
+      setFeedbackDialogOpen(false);
+    } catch (error) {
+      console.error('Regeneration error:', error);
+      toast.error('Failed to regenerate question');
+    } finally {
+      setIsRegenerating(false);
+    }
+  };
+
   // Play preloaded audio
   const playPreloadedAudio = (url: string, type: 'scripture' | 'question') => {
     setIsPlaying(true);
@@ -543,20 +659,55 @@ export default function ReadingExperience({
       const supabase = createSupabaseClient();
 
       // Save session with ending position metadata
-      await supabase.from('reading_sessions').insert({
-        user_id: userId,
-        book: passageMetadata.startBook,
-        chapter: passageMetadata.startChapter,
-        verses_read: passageMetadata.versesRead,
-        content: {
-          scripture_text: passage,
-          reference: reference,
-          questions: questions,
-          ending_book: passageMetadata.endingBook,
-          ending_chapter: passageMetadata.endingChapter,
-          ending_verse: passageMetadata.endingVerse,
-        },
-      });
+      const { data: session, error: sessionError } = await supabase
+        .from('reading_sessions')
+        .insert({
+          user_id: userId,
+          book: passageMetadata.startBook,
+          chapter: passageMetadata.startChapter,
+          verses_read: passageMetadata.versesRead,
+          content: {
+            scripture_text: passage,
+            reference: reference,
+            questions: questions,
+            ending_book: passageMetadata.endingBook,
+            ending_chapter: passageMetadata.endingChapter,
+            ending_verse: passageMetadata.endingVerse,
+          },
+        })
+        .select()
+        .single();
+
+      if (sessionError) throw sessionError;
+
+      // Save question feedback if any exists
+      if (questionFeedback.size > 0 && session) {
+        const feedbackPromises = Array.from(questionFeedback.entries()).map(
+          ([familyMemberId, feedback]) => {
+            const question = questions.find(
+              (q) => q.familyMemberId === familyMemberId
+            );
+            if (!question) return Promise.resolve();
+
+            return fetch('/api/bible/question-feedback', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                sessionId: session.id,
+                familyMemberId: question.familyMemberId,
+                familyMemberName: question.name,
+                familyMemberAge: question.age,
+                questionText: question.question,
+                rating: feedback.rating,
+                bibleReference: reference,
+                feedbackText: feedback.text,
+              }),
+            });
+          }
+        );
+
+        await Promise.all(feedbackPromises);
+      }
 
       // Calculate next starting position (one verse after where we ended)
       const currentEndPos: VersePosition = {
@@ -896,6 +1047,55 @@ export default function ReadingExperience({
                                 <span className="text-sm text-muted-foreground">
                                   Age {question.age}
                                 </span>
+
+                                {/* Feedback menu */}
+                                {!isHistoricalView && (
+                                  <div className="ml-auto">
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger asChild>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-8 w-8 p-0"
+                                        >
+                                          <MoreHorizontal className="h-4 w-4" />
+                                        </Button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent align="end">
+                                        <DropdownMenuItem
+                                          onClick={() =>
+                                            handleQuestionFeedback(question, 1)
+                                          }
+                                          className={
+                                            questionFeedback.get(
+                                              question.familyMemberId
+                                            )?.rating === 1
+                                              ? 'bg-green-500/10 text-green-600'
+                                              : ''
+                                          }
+                                        >
+                                          <ThumbsUp className="h-4 w-4 mr-2" />
+                                          Good question
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                          onClick={() =>
+                                            handleQuestionFeedback(question, -1)
+                                          }
+                                          className={
+                                            questionFeedback.get(
+                                              question.familyMemberId
+                                            )?.rating === -1
+                                              ? 'bg-red-500/10 text-red-600'
+                                              : ''
+                                          }
+                                        >
+                                          <ThumbsDown className="h-4 w-4 mr-2" />
+                                          Needs improvement
+                                        </DropdownMenuItem>
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
+                                  </div>
+                                )}
                               </div>
                               <p
                                 className="text-lg leading-relaxed"
@@ -958,6 +1158,51 @@ export default function ReadingExperience({
             )}
           </div>
         )}
+
+      {/* Feedback Dialog */}
+      <Dialog open={feedbackDialogOpen} onOpenChange={setFeedbackDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Help us improve this question</DialogTitle>
+            <DialogDescription>
+              What wasn't quite right about this question for{' '}
+              {selectedQuestionForFeedback?.name}? (Optional)
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Current question:</p>
+              <p className="text-sm text-muted-foreground italic">
+                "{selectedQuestionForFeedback?.question}"
+              </p>
+            </div>
+
+            <Textarea
+              placeholder="e.g., Too hard for their age, not engaging, off-topic..."
+              value={feedbackText}
+              onChange={(e) => setFeedbackText(e.target.value)}
+              className="min-h-[100px]"
+            />
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setFeedbackDialogOpen(false)}
+              disabled={isRegenerating}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleRegenerateQuestion}
+              disabled={isRegenerating}
+            >
+              {isRegenerating ? 'Regenerating...' : 'Regenerate Question'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
