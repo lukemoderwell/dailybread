@@ -821,7 +821,7 @@ export default function ReadingExperience({
             </Button>
           )}
         </div>
-        <div className="flex items-center gap-2 md:gap-4">
+        <div className="flex items-center gap-2">
           <Link href="/progress">
             <Button variant="ghost" size="icon">
               <BarChart3 className="h-5 w-5" />
@@ -832,13 +832,6 @@ export default function ReadingExperience({
               <Settings className="h-5 w-5" />
             </Button>
           </Link>
-          <div className="flex items-center gap-2">
-            <Flame className="h-5 w-5 text-orange-500" />
-            <div className="text-right">
-              <div className="text-2xl font-bold">{currentStreak}</div>
-              <div className="text-xs text-muted-foreground">day streak</div>
-            </div>
-          </div>
         </div>
       </div>
 
