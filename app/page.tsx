@@ -43,7 +43,7 @@ export default async function Home() {
       <section className="border-t bg-muted/50 py-24">
         <div className="container mx-auto px-4">
           <div className="mb-16 text-center">
-            <h2 className="text-3xl font-bold">How It Works</h2>
+            <h2 className="text-lg lg:text-3xl font-bold">How It Works</h2>
             <p className="mt-4 text-muted-foreground">
               Simple, audio-first Bible study for your family
             </p>

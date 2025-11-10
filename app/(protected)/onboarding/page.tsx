@@ -1,6 +1,6 @@
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { redirect } from "next/navigation";
-import OnboardingForm from "@/components/onboarding/onboarding-form";
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { redirect } from 'next/navigation';
+import OnboardingForm from '@/components/onboarding/onboarding-form';
 
 export default async function OnboardingPage() {
   const supabase = await createSupabaseServerClient();
@@ -9,32 +9,34 @@ export default async function OnboardingPage() {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect("/login");
+    redirect('/login');
   }
 
   // Check if user already has family members
   const { data: familyMembers } = await supabase
-    .from("family_members")
-    .select("*")
-    .eq("user_id", user.id);
+    .from('family_members')
+    .select('*')
+    .eq('user_id', user.id);
 
   // Check if user has reading progress
   const { data: progress } = await supabase
-    .from("reading_progress")
-    .select("*")
-    .eq("user_id", user.id)
+    .from('reading_progress')
+    .select('*')
+    .eq('user_id', user.id)
     .single();
 
   // If they have both, redirect to dashboard
   if (familyMembers && familyMembers.length > 0 && progress) {
-    redirect("/today");
+    redirect('/today');
   }
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold mb-2">Welcome to Daily Bread</h1>
+          <h1 className="text-xl lg:text-3xl font-bold mb-2">
+            Welcome to Daily Bread
+          </h1>
           <p className="text-muted-foreground">
             Let&apos;s set up your family Bible study
           </p>

@@ -1,35 +1,37 @@
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { redirect } from "next/navigation";
-import SettingsForm from "@/components/settings/settings-form";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { redirect } from 'next/navigation';
+import SettingsForm from '@/components/settings/settings-form';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { ArrowLeft } from 'lucide-react';
 
 export default async function SettingsPage() {
   const supabase = await createSupabaseServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  if (!user) redirect("/login");
+  if (!user) redirect('/login');
 
   // Fetch user preferences
   const { data: preferences } = await supabase
-    .from("user_preferences")
-    .select("*")
-    .eq("user_id", user.id)
+    .from('user_preferences')
+    .select('*')
+    .eq('user_id', user.id)
     .single();
 
   // Fetch family members
   const { data: familyMembers } = await supabase
-    .from("family_members")
-    .select("*")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: true });
+    .from('family_members')
+    .select('*')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: true });
 
   // Fetch reading progress
   const { data: readingProgress } = await supabase
-    .from("reading_progress")
-    .select("*")
-    .eq("user_id", user.id)
+    .from('reading_progress')
+    .select('*')
+    .eq('user_id', user.id)
     .single();
 
   return (
@@ -41,7 +43,7 @@ export default async function SettingsPage() {
           </Button>
         </Link>
         <div>
-          <h1 className="text-3xl font-bold">Settings</h1>
+          <h1 className="text-xl lg:text-3xl font-bold">Settings</h1>
           <p className="text-muted-foreground mt-2">
             Customize your Bible reading experience
           </p>
@@ -50,7 +52,7 @@ export default async function SettingsPage() {
 
       <SettingsForm
         userId={user.id}
-        userEmail={user.email || ""}
+        userEmail={user.email || ''}
         userName={user.user_metadata?.full_name || null}
         initialPreferences={preferences}
         initialFamilyMembers={familyMembers || []}

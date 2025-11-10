@@ -15,6 +15,7 @@ import {
   ThumbsUp,
   ThumbsDown,
   MoreHorizontal,
+  BarChart3,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { createSupabaseClient } from '@/lib/supabase/client';
@@ -820,7 +821,12 @@ export default function ReadingExperience({
             </Button>
           )}
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 md:gap-4">
+          <Link href="/progress">
+            <Button variant="ghost" size="icon">
+              <BarChart3 className="h-5 w-5" />
+            </Button>
+          </Link>
           <Link href="/settings">
             <Button variant="ghost" size="icon">
               <Settings className="h-5 w-5" />
