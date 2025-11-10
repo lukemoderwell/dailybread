@@ -62,10 +62,11 @@ interface SettingsFormProps {
 
 const BIBLE_TRANSLATIONS = [
   { id: "de4e12af7f28f599-02", name: "King James Version (KJV)" },
-  { id: "06125adad2d5898a-01", name: "New International Version (NIV)" },
-  { id: "9879dbb7cfe39e4d-04", name: "New Revised Standard Version (NRSV)" },
-  { id: "592420522e16049f-01", name: "English Standard Version (ESV)" },
-  { id: "f72b840c855f362c-04", name: "New Living Translation (NLT)" },
+  { id: "06125adad2d5898a-01", name: "American Standard Version (ASV)" },
+  { id: "9879dbb7cfe39e4d-04", name: "World English Bible (WEB)" },
+  { id: "bba9f40183526463-01", name: "Berean Standard Bible (BSB)" },
+  { id: "555fef9a6cb31151-01", name: "Contemporary English Version (CEV)" },
+  { id: "01b29f4b342acc35-01", name: "Literal Standard Version (LSV)" },
 ];
 
 const TTS_VOICES = [
