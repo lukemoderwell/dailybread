@@ -1,16 +1,27 @@
-"use client";
+'use client';
 
-import { useState, useEffect, useRef } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Play, Pause, Check, Flame, Settings, ChevronLeft, ChevronRight } from "lucide-react";
-import { toast } from "sonner";
-import { createSupabaseClient } from "@/lib/supabase/client";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { getColorById } from "@/lib/colors";
-import { calculateEndingPosition, type VersePosition } from "@/lib/bible-metadata";
+import { useState, useEffect, useRef } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Play,
+  Pause,
+  Check,
+  Flame,
+  Settings,
+  ChevronLeft,
+  ChevronRight,
+} from 'lucide-react';
+import { toast } from 'sonner';
+import { createSupabaseClient } from '@/lib/supabase/client';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { getColorById } from '@/lib/colors';
+import {
+  calculateEndingPosition,
+  type VersePosition,
+} from '@/lib/bible-metadata';
 
 interface FamilyMember {
   id: string;
@@ -42,12 +53,12 @@ interface ReadingExperienceProps {
 }
 
 type ReadingState =
-  | "loading"
-  | "ready"
-  | "playing-scripture"
-  | "scripture-complete"
-  | "playing-question"
-  | "all-complete";
+  | 'loading'
+  | 'ready'
+  | 'playing-scripture'
+  | 'scripture-complete'
+  | 'playing-question'
+  | 'all-complete';
 
 export default function ReadingExperience({
   userId,
@@ -62,20 +73,26 @@ export default function ReadingExperience({
   versesPerSession,
 }: ReadingExperienceProps) {
   const router = useRouter();
-  const [state, setState] = useState<ReadingState>("loading");
-  const [passage, setPassage] = useState("");
-  const [reference, setReference] = useState("");
+  const [state, setState] = useState<ReadingState>('loading');
+  const [passage, setPassage] = useState('');
+  const [reference, setReference] = useState('');
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoadingQuestions, setIsLoadingQuestions] = useState(true);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const [scriptureAudioUrl, setScriptureAudioUrl] = useState<string | null>(null);
+  const [scriptureAudioUrl, setScriptureAudioUrl] = useState<string | null>(
+    null
+  );
   const [isPreloadingAudio, setIsPreloadingAudio] = useState(false);
-  const [answeredQuestions, setAnsweredQuestions] = useState<Set<number>>(new Set());
+  const [answeredQuestions, setAnsweredQuestions] = useState<Set<number>>(
+    new Set()
+  );
   const [verses, setVerses] = useState<string[]>([]);
-  const [wordTimestamps, setWordTimestamps] = useState<Array<{word: string, startSecond: number, endSecond: number}>>([]);
+  const [wordTimestamps, setWordTimestamps] = useState<
+    Array<{ word: string; startSecond: number; endSecond: number }>
+  >([]);
 
   // Track passage metadata for sequential reading
   const [passageMetadata, setPassageMetadata] = useState<{
@@ -91,7 +108,7 @@ export default function ReadingExperience({
   // Session navigation state
   const [currentSessionId, setCurrentSessionId] = useState<number | null>(null);
   const [isHistoricalView, setIsHistoricalView] = useState(false);
-  const [sessionSummary, setSessionSummary] = useState<string>("");
+  const [sessionSummary, setSessionSummary] = useState<string>('');
   const [isLoadingSummary, setIsLoadingSummary] = useState(false);
   const [navigationMeta, setNavigationMeta] = useState<{
     hasPrevious: boolean;
@@ -110,21 +127,21 @@ export default function ReadingExperience({
     async function loadContent() {
       try {
         // Reset state when starting to load
-        setPassage("");
-        setReference("");
+        setPassage('');
+        setReference('');
         setQuestions([]);
         setPassageMetadata(null);
-        setSessionSummary("");
+        setSessionSummary('');
 
         // If viewing a historical session, load that session's data
         if (currentSessionId !== null) {
-          const sessionRes = await fetch("/api/bible/sessions", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
+          const sessionRes = await fetch('/api/bible/sessions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ sessionId: currentSessionId }),
           });
 
-          if (!sessionRes.ok) throw new Error("Failed to fetch session");
+          if (!sessionRes.ok) throw new Error('Failed to fetch session');
 
           const sessionData = await sessionRes.json();
 
@@ -134,7 +151,7 @@ export default function ReadingExperience({
           setQuestions(sessionData.session.content.questions || []);
           setIsHistoricalView(true);
           setNavigationMeta(sessionData.navigation);
-          setState("ready");
+          setState('ready');
           setIsLoadingQuestions(false);
 
           // Check if we have a cached summary
@@ -145,9 +162,9 @@ export default function ReadingExperience({
           } else {
             // Generate summary in the background
             setIsLoadingSummary(true);
-            fetch("/api/bible/summarize-session", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
+            fetch('/api/bible/summarize-session', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 sessionId: sessionData.session.id,
                 reference: sessionData.session.content.reference,
@@ -161,7 +178,7 @@ export default function ReadingExperience({
                 }
               })
               .catch((error) => {
-                console.error("Summary generation failed:", error);
+                console.error('Summary generation failed:', error);
               })
               .finally(() => {
                 setIsLoadingSummary(false);
@@ -176,9 +193,9 @@ export default function ReadingExperience({
         setIsLoadingQuestions(true);
 
         // Fetch Bible passage first (fastest, unblocks UI)
-        const passageRes = await fetch("/api/bible/passage", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
+        const passageRes = await fetch('/api/bible/passage', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             book: currentBook,
             chapter: currentChapter,
@@ -188,7 +205,7 @@ export default function ReadingExperience({
           }),
         });
 
-        if (!passageRes.ok) throw new Error("Failed to fetch passage");
+        if (!passageRes.ok) throw new Error('Failed to fetch passage');
 
         const passageData = await passageRes.json();
 
@@ -212,45 +229,54 @@ export default function ReadingExperience({
         });
 
         // For verse tracking (TTS highlighting), extract plain text
-        const plainText = htmlContent.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+        const plainText = htmlContent
+          .replace(/<[^>]*>/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
 
         // Split by verse numbers for highlighting (rough approximation)
         // This is just for TTS tracking, not display
-        const verseArray = plainText.split(/(?=\d+\s)/).filter((v: string) => v.trim().length > 0);
+        const verseArray = plainText
+          .split(/(?=\d+\s)/)
+          .filter((v: string) => v.trim().length > 0);
         setVerses(verseArray);
 
         // Show content immediately - user can start reading while questions/audio load
-        setState("ready");
+        setState('ready');
 
         // Load questions and TTS in parallel (non-blocking)
         Promise.all([
           // Generate questions
-          fetch("/api/bible/generate-questions", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
+          fetch('/api/bible/generate-questions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               passage: plainText,
               reference: passageData.reference,
               familyMembers: familyMembers,
             }),
-          }).then(async (questionsRes) => {
-            if (questionsRes.ok) {
-              const questionsData = await questionsRes.json();
-              setQuestions(questionsData.questions);
-            } else {
-              console.error("Failed to generate questions");
-            }
-          }).finally(() => {
-            setIsLoadingQuestions(false);
-          }),
+          })
+            .then(async (questionsRes) => {
+              if (questionsRes.ok) {
+                const questionsData = await questionsRes.json();
+                setQuestions(questionsData.questions);
+              } else {
+                console.error('Failed to generate questions');
+              }
+            })
+            .finally(() => {
+              setIsLoadingQuestions(false);
+            }),
 
           // Preload scripture audio if TTS is enabled
-          enableTts ? preloadAudio(plainText, passageData.reference) : Promise.resolve(),
+          enableTts
+            ? preloadAudio(plainText, passageData.reference)
+            : Promise.resolve(),
 
           // Fetch navigation metadata for current reading
-          fetch("/api/bible/sessions", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
+          fetch('/api/bible/sessions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({}), // No sessionId = current reading
           }).then(async (navRes) => {
             if (navRes.ok) {
@@ -259,19 +285,26 @@ export default function ReadingExperience({
             }
           }),
         ]).catch((error) => {
-          console.error("Error loading questions/audio:", error);
+          console.error('Error loading questions/audio:', error);
           setIsLoadingQuestions(false);
           // Don't block the UI - content is already showing
         });
-
       } catch (error) {
-        console.error("Content loading error:", error);
+        console.error('Content loading error:', error);
         toast.error("Failed to load today's reading");
       }
     }
 
     loadContent();
-  }, [currentBook, currentChapter, currentVerse, familyMembers, bibleTranslation, ttsVoice, currentSessionId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [
+    currentBook,
+    currentChapter,
+    currentVerse,
+    familyMembers,
+    bibleTranslation,
+    ttsVoice,
+    currentSessionId,
+  ]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Generate cache key for audio
   const generateCacheKey = (text: string, voice: string): string => {
@@ -280,7 +313,7 @@ export default function ReadingExperience({
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
       const char = str.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
+      hash = (hash << 5) - hash + char;
       hash = hash & hash;
     }
     return `tts_audio_${Math.abs(hash).toString(36)}`;
@@ -308,7 +341,12 @@ export default function ReadingExperience({
     });
   };
 
-  const getCachedAudio = async (key: string): Promise<{blob: Blob, timestamps: Array<{word: string, startSecond: number, endSecond: number}>} | null> => {
+  const getCachedAudio = async (
+    key: string
+  ): Promise<{
+    blob: Blob;
+    timestamps: Array<{ word: string; startSecond: number; endSecond: number }>;
+  } | null> => {
     try {
       const db = await openAudioCache();
       return new Promise((resolve, reject) => {
@@ -332,7 +370,11 @@ export default function ReadingExperience({
     }
   };
 
-  const setCachedAudio = async (key: string, blob: Blob, timestamps: Array<{word: string, startSecond: number, endSecond: number}>): Promise<void> => {
+  const setCachedAudio = async (
+    key: string,
+    blob: Blob,
+    timestamps: Array<{ word: string; startSecond: number; endSecond: number }>
+  ): Promise<void> => {
     try {
       const db = await openAudioCache();
       return new Promise((resolve, reject) => {
@@ -369,12 +411,12 @@ export default function ReadingExperience({
 
       // Generate scripture audio
       console.log('Generating new audio...');
-      const scriptureResponse = await fetch("/api/tts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const scriptureResponse = await fetch('/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           text: fullText,
-          voice: ttsVoice
+          voice: ttsVoice,
         }),
       });
 
@@ -418,7 +460,7 @@ export default function ReadingExperience({
   };
 
   // Play preloaded audio
-  const playPreloadedAudio = (url: string, type: "scripture" | "question") => {
+  const playPreloadedAudio = (url: string, type: 'scripture' | 'question') => {
     setIsPlaying(true);
 
     const audio = new Audio();
@@ -427,22 +469,22 @@ export default function ReadingExperience({
 
     audio.onended = () => {
       setIsPlaying(false);
-      if (type === "scripture") {
-        setState("scripture-complete");
+      if (type === 'scripture') {
+        setState('scripture-complete');
       } else {
         // Move to next question or complete
         if (currentQuestionIndex < questions.length - 1) {
           setCurrentQuestionIndex(currentQuestionIndex + 1);
-          setState("scripture-complete");
+          setState('scripture-complete');
         } else {
-          setState("all-complete");
+          setState('all-complete');
         }
       }
     };
 
     audio.onerror = () => {
       setIsPlaying(false);
-      toast.error("Audio playback failed");
+      toast.error('Audio playback failed');
     };
 
     // Note: Verse highlighting during TTS playback has been removed
@@ -450,10 +492,10 @@ export default function ReadingExperience({
 
     audio.play();
 
-    if (type === "scripture") {
-      setState("playing-scripture");
+    if (type === 'scripture') {
+      setState('playing-scripture');
     } else {
-      setState("playing-question");
+      setState('playing-question');
     }
   };
 
@@ -466,22 +508,22 @@ export default function ReadingExperience({
 
   const startScripture = () => {
     if (scriptureAudioUrl) {
-      playPreloadedAudio(scriptureAudioUrl, "scripture");
+      playPreloadedAudio(scriptureAudioUrl, 'scripture');
     } else {
-      toast.error("Audio is still loading, please wait...");
+      toast.error('Audio is still loading, please wait...');
     }
   };
 
   // Session navigation handlers
   const navigateToPrevious = () => {
     if (navigationMeta.previousId) {
-      setState("loading");
+      setState('loading');
       setCurrentSessionId(navigationMeta.previousId);
     }
   };
 
   const navigateToNext = () => {
-    setState("loading");
+    setState('loading');
     if (navigationMeta.nextId) {
       setCurrentSessionId(navigationMeta.nextId);
     } else {
@@ -494,14 +536,14 @@ export default function ReadingExperience({
   const completeReading = async () => {
     try {
       if (!passageMetadata) {
-        toast.error("Session data not loaded yet");
+        toast.error('Session data not loaded yet');
         return;
       }
 
       const supabase = createSupabaseClient();
 
       // Save session with ending position metadata
-      await supabase.from("reading_sessions").insert({
+      await supabase.from('reading_sessions').insert({
         user_id: userId,
         book: passageMetadata.startBook,
         chapter: passageMetadata.startChapter,
@@ -527,31 +569,37 @@ export default function ReadingExperience({
 
       if (!nextStartPos) {
         // We've reached the end of the Bible - wrap around to Genesis 1:1
-        await supabase.from("reading_progress").update({
-          current_book: "Genesis",
-          current_chapter: 1,
-          current_verse: 1,
-        }).eq("user_id", userId);
+        await supabase
+          .from('reading_progress')
+          .update({
+            current_book: 'Genesis',
+            current_chapter: 1,
+            current_verse: 1,
+          })
+          .eq('user_id', userId);
       } else {
         // Update reading_progress with next starting position
-        await supabase.from("reading_progress").update({
-          current_book: nextStartPos.book,
-          current_chapter: nextStartPos.chapter,
-          current_verse: nextStartPos.verse,
-        }).eq("user_id", userId);
+        await supabase
+          .from('reading_progress')
+          .update({
+            current_book: nextStartPos.book,
+            current_chapter: nextStartPos.chapter,
+            current_verse: nextStartPos.verse,
+          })
+          .eq('user_id', userId);
       }
 
-      toast.success("Great job! See you tomorrow!");
+      toast.success('Great job! See you tomorrow!');
 
       // Refresh to get new reading
       router.refresh();
     } catch (error) {
-      console.error("Complete reading error:", error);
-      toast.error("Failed to save progress");
+      console.error('Complete reading error:', error);
+      toast.error('Failed to save progress');
     }
   };
 
-  if (state === "loading") {
+  if (state === 'loading') {
     return (
       <div className="max-w-4xl mx-auto p-4 pb-24 space-y-6">
         {/* Header skeleton */}
@@ -590,7 +638,7 @@ export default function ReadingExperience({
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-4 pb-24 space-y-6">
+    <div className="max-w-4xl mx-auto px-2 py-4 pb-24 space-y-6 md:p-4 md:pb-24">
       {/* Header with streak and navigation */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -604,8 +652,8 @@ export default function ReadingExperience({
             <ChevronLeft className="h-5 w-5" />
           </Button>
           <div>
-            <h1 className="text-2xl font-bold">
-              {isHistoricalView ? "Previous Reading" : "Today's Reading"}
+            <h1 className="text-lg lg:text-2xl font-bold">
+              {isHistoricalView ? 'Previous Reading' : "Today's Reading"}
             </h1>
             <p className="text-muted-foreground text-sm">{reference}</p>
           </div>
@@ -641,7 +689,9 @@ export default function ReadingExperience({
         <div className="bg-muted/50 border border-muted rounded-lg p-4 space-y-2">
           {isLoadingSummary ? (
             <div className="space-y-2">
-              <p className="text-sm text-muted-foreground mb-2">Loading summary...</p>
+              <p className="text-sm text-muted-foreground mb-2">
+                Loading summary...
+              </p>
               <div className="h-4 bg-muted animate-pulse rounded w-3/4"></div>
               <div className="h-4 bg-muted animate-pulse rounded w-full"></div>
               <div className="h-4 bg-muted animate-pulse rounded w-5/6"></div>
@@ -650,7 +700,8 @@ export default function ReadingExperience({
             <p className="text-sm leading-relaxed">{sessionSummary}</p>
           ) : (
             <p className="text-sm text-muted-foreground">
-              You&apos;re viewing a previous reading. Use the arrows above to navigate back to today&apos;s reading.
+              You&apos;re viewing a previous reading. Use the arrows above to
+              navigate back to today&apos;s reading.
             </p>
           )}
         </div>
@@ -658,47 +709,68 @@ export default function ReadingExperience({
 
       <Tabs defaultValue="scripture" className="w-full">
         <TabsList className="grid w-full grid-cols-2 h-12">
-          <TabsTrigger value="scripture" className="text-base">Scripture</TabsTrigger>
-          <TabsTrigger value="questions" className="text-base">Questions</TabsTrigger>
+          <TabsTrigger value="scripture" className="text-base">
+            Scripture
+          </TabsTrigger>
+          <TabsTrigger value="questions" className="text-base">
+            Questions
+          </TabsTrigger>
         </TabsList>
 
         {/* Scripture Tab */}
         <TabsContent value="scripture" className="mt-6">
-          <Card>
-            <CardContent className="pt-6 px-6 md:px-12">
-              <div className="mx-auto max-w-prose">
+          <Card className="border-0 md:border shadow-none md:shadow-sm">
+            <CardContent className="pt-4 px-4 pb-8 md:pt-8 md:px-12 md:pb-12">
+              <div className="mx-auto" style={{ maxWidth: '65ch' }}>
                 <style jsx>{`
                   .scripture-content {
-                    font-family: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
-                    font-size: 1rem;
-                    line-height: 1.75;
+                    /* Medium-inspired typography */
+                    font-family: Charter, 'Bitstream Charter', 'Sitka Text',
+                      Cambria, 'Georgia Pro', Georgia, 'Times New Roman', Times,
+                      serif;
+                    font-size: 1.125rem;
+                    line-height: 1.7;
                     text-align: left;
-                    hyphens: auto;
-                    word-spacing: 0.05em;
+                    color: hsl(var(--foreground));
+                    font-weight: 400;
+                    letter-spacing: -0.003em;
+                    word-spacing: 0;
+                    -webkit-font-smoothing: antialiased;
+                    -moz-osx-font-smoothing: grayscale;
                   }
 
                   @media (min-width: 768px) {
                     .scripture-content {
-                      font-size: 1.125rem;
+                      font-size: 1.3125rem;
+                      line-height: 1.75;
+                      letter-spacing: -0.005em;
                     }
                   }
 
-                  /* Style Bible API verse numbers */
+                  @media (min-width: 1024px) {
+                    .scripture-content {
+                      font-size: 1.375rem;
+                      line-height: 1.8;
+                    }
+                  }
+
+                  /* Style Bible API verse numbers - subtle and unobtrusive */
                   .scripture-content :global(.v) {
-                    opacity: 0.8;
-                    font-size: 0.65em;
-                    font-weight: normal;
-                    margin-right: 0.3em;
-                    margin-left: 0.1em;
+                    opacity: 0.75;
+                    font-size: 0.7em;
+                    font-weight: 500;
+                    margin-right: 0.25em;
+                    margin-left: 0.35em;
                     vertical-align: super;
                     line-height: 0;
                     position: relative;
-                    top: -0.4em;
+                    top: -0.35em;
+                    color: hsl(var(--muted-foreground));
                   }
 
                   /* Add slight spacing after verse spans for sentence separation */
                   .scripture-content :global(span[data-sid]) {
-                    margin-right: 0.15em;
+                    margin-right: 0.1em;
                   }
 
                   /* Make paragraphs flow inline without breaks */
@@ -712,10 +784,21 @@ export default function ReadingExperience({
                     display: inline;
                   }
 
-                  /* Style added words (italics in KJV) */
+                  /* Style added words (italics in KJV) - subtle distinction */
                   .scripture-content :global(.add) {
                     font-style: italic;
-                    opacity: 0.9;
+                    opacity: 0.95;
+                  }
+
+                  /* Improve text rendering */
+                  .scripture-content {
+                    text-rendering: optimizeLegibility;
+                    font-feature-settings: 'kern' 1, 'liga' 1;
+                  }
+
+                  /* Selection styling for better reading experience */
+                  .scripture-content :global(::selection) {
+                    background-color: hsl(var(--accent) / 0.2);
                   }
                 `}</style>
                 <div
@@ -765,7 +848,9 @@ export default function ReadingExperience({
                   return (
                     <Card
                       key={question.familyMemberId}
-                      className={answeredQuestions.has(index) ? "opacity-60" : ""}
+                      className={
+                        answeredQuestions.has(index) ? 'opacity-60' : ''
+                      }
                       style={{
                         borderLeft: `4px solid ${memberColor.value}`,
                       }}
@@ -780,17 +865,22 @@ export default function ReadingExperience({
                               <div
                                 className={`w-6 h-6 rounded border-2 flex items-center justify-center transition-colors`}
                                 style={{
-                                  backgroundColor: answeredQuestions.has(index) ? memberColor.value : 'transparent',
+                                  backgroundColor: answeredQuestions.has(index)
+                                    ? memberColor.value
+                                    : 'transparent',
                                   borderColor: memberColor.value,
                                 }}
                               >
                                 {answeredQuestions.has(index) && (
-                                  <Check className="h-4 w-4" style={{ color: memberColor.textColor }} />
+                                  <Check
+                                    className="h-4 w-4"
+                                    style={{ color: memberColor.textColor }}
+                                  />
                                 )}
                               </div>
                             </button>
                             <div className="flex-1">
-                              <div className="flex items-center gap-3 mb-2">
+                              <div className="flex items-center gap-3 mb-3">
                                 <div
                                   className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
                                   style={{
@@ -800,10 +890,23 @@ export default function ReadingExperience({
                                 >
                                   {question.name.charAt(0).toUpperCase()}
                                 </div>
-                                <h3 className="text-xl font-semibold">{question.name}</h3>
-                                <span className="text-sm text-muted-foreground">Age {question.age}</span>
+                                <h3 className="text-lg font-semibold">
+                                  {question.name}
+                                </h3>
+                                <span className="text-sm text-muted-foreground">
+                                  Age {question.age}
+                                </span>
                               </div>
-                              <p className="text-lg leading-relaxed">{question.question}</p>
+                              <p
+                                className="text-lg leading-relaxed"
+                                style={{
+                                  lineHeight: '1.7',
+                                  fontSize: '1.0625rem',
+                                  letterSpacing: '-0.002em',
+                                }}
+                              >
+                                {question.question}
+                              </p>
                             </div>
                           </div>
                         </div>
@@ -829,29 +932,32 @@ export default function ReadingExperience({
       </Tabs>
 
       {/* Floating Action Button for Audio Control - only show if TTS is enabled */}
-      {enableTts && (state === "ready" || state === "scripture-complete" || state === "playing-scripture") && (
-        <div className="fixed bottom-6 right-6 z-50">
-          {!isPlaying ? (
-            <Button
-              size="lg"
-              onClick={startScripture}
-              disabled={!scriptureAudioUrl || isPreloadingAudio}
-              className="h-16 w-16 rounded-full shadow-lg hover:shadow-xl transition-all"
-            >
-              <Play className="h-8 w-8" />
-            </Button>
-          ) : (
-            <Button
-              size="lg"
-              onClick={pauseAudio}
-              variant="outline"
-              className="h-16 w-16 rounded-full shadow-lg hover:shadow-xl transition-all bg-background"
-            >
-              <Pause className="h-8 w-8" />
-            </Button>
-          )}
-        </div>
-      )}
+      {enableTts &&
+        (state === 'ready' ||
+          state === 'scripture-complete' ||
+          state === 'playing-scripture') && (
+          <div className="fixed bottom-6 right-6 z-50">
+            {!isPlaying ? (
+              <Button
+                size="lg"
+                onClick={startScripture}
+                disabled={!scriptureAudioUrl || isPreloadingAudio}
+                className="h-16 w-16 rounded-full shadow-lg hover:shadow-xl transition-all"
+              >
+                <Play className="h-8 w-8" />
+              </Button>
+            ) : (
+              <Button
+                size="lg"
+                onClick={pauseAudio}
+                variant="outline"
+                className="h-16 w-16 rounded-full shadow-lg hover:shadow-xl transition-all bg-background"
+              >
+                <Pause className="h-8 w-8" />
+              </Button>
+            )}
+          </div>
+        )}
     </div>
   );
 }
