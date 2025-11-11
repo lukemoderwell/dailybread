@@ -8,7 +8,6 @@ import {
   Play,
   Pause,
   Check,
-  Flame,
   Settings,
   ChevronLeft,
   ChevronRight,
@@ -41,6 +40,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import BiblePainting from '@/components/bible-painting';
 
 interface FamilyMember {
   id: string;
@@ -69,6 +69,7 @@ interface ReadingExperienceProps {
   ttsVoice: string;
   enableTts: boolean;
   versesPerSession: number;
+  enablePaintings?: boolean;
 }
 
 type ReadingState =
@@ -85,11 +86,11 @@ export default function ReadingExperience({
   currentBook,
   currentChapter,
   currentVerse,
-  currentStreak,
   bibleTranslation,
   ttsVoice,
   enableTts,
   versesPerSession,
+  enablePaintings = true,
 }: ReadingExperienceProps) {
   const router = useRouter();
   const [state, setState] = useState<ReadingState>('loading');
@@ -956,6 +957,21 @@ export default function ReadingExperience({
                   dangerouslySetInnerHTML={{ __html: passage }}
                 />
               </div>
+              {/* Bible Painting */}
+              {enablePaintings && passage && !isHistoricalView && (
+                <BiblePainting
+                  reference={reference}
+                  passage={passage
+                    .replace(/<[^>]*>/g, ' ')
+                    .replace(/\s+/g, ' ')
+                    .trim()}
+                  familyMemberAges={familyMembers.map((m) => m.age)}
+                  onPaintingGenerated={(data) => {
+                    console.log('Painting generated:', data);
+                    // Could save to session here if needed
+                  }}
+                />
+              )}
             </CardContent>
           </Card>
         </TabsContent>

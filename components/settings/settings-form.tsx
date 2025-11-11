@@ -42,6 +42,8 @@ interface UserPreferences {
   daily_reading_minutes: number;
   enable_tts: boolean;
   verses_per_session: number;
+  enable_paintings?: boolean;
+  painting_style_preference?: string;
 }
 
 interface ReadingProgress {
@@ -121,6 +123,9 @@ export default function SettingsForm({
   );
   const [enableTts, setEnableTts] = useState(
     initialPreferences?.enable_tts ?? true
+  );
+  const [enablePaintings, setEnablePaintings] = useState(
+    initialPreferences?.enable_paintings ?? true
   );
 
   // Calculate verses per session based on reading minutes
@@ -249,6 +254,7 @@ export default function SettingsForm({
           daily_reading_minutes: readingMinutes,
           enable_tts: enableTts,
           verses_per_session: versesPerSession,
+          enable_paintings: enablePaintings,
         }),
       });
 
@@ -533,6 +539,37 @@ export default function SettingsForm({
                 </SelectContent>
               </Select>
             </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Bible Paintings */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Palette className="h-5 w-5" />
+            Bible Paintings
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <Label htmlFor="enable-paintings">Enable AI Paintings</Label>
+              <p className="text-sm text-muted-foreground">
+                Generate beautiful classical-style illustrations for each reading
+              </p>
+            </div>
+            <Switch
+              id="enable-paintings"
+              checked={enablePaintings}
+              onCheckedChange={setEnablePaintings}
+            />
+          </div>
+
+          {enablePaintings && (
+            <p className="text-sm text-muted-foreground pt-4 border-t">
+              Paintings are generated automatically in a classical style that best fits each passage.
+            </p>
           )}
         </CardContent>
       </Card>
