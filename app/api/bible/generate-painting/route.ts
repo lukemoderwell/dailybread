@@ -207,6 +207,20 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Check user preferences to ensure paintings are enabled
+    const { data: preferences } = await supabase
+      .from('user_preferences')
+      .select('enable_paintings')
+      .eq('user_id', user.id)
+      .single();
+
+    if (!preferences?.enable_paintings) {
+      return NextResponse.json(
+        { error: 'Bible paintings are disabled in settings', skipped: true },
+        { status: 403 }
+      );
+    }
+
     const {
       passage,
       reference,

@@ -125,7 +125,7 @@ export default function SettingsForm({
     initialPreferences?.enable_tts ?? true
   );
   const [enablePaintings, setEnablePaintings] = useState(
-    initialPreferences?.enable_paintings ?? true
+    initialPreferences?.enable_paintings ?? false
   );
 
   // Calculate verses per session based on reading minutes

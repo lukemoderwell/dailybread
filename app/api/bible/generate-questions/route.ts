@@ -222,7 +222,7 @@ Ensure questions are in the SAME ORDER as the family members list above.`;
     }
 
     // Map generated questions back to family members with full metadata
-    const questions = familyMembers.map((member, index) => {
+    const questions = familyMembers.map((member) => {
       const generated = generatedQuestions.find((q) => q.name === member.name);
       if (!generated) {
         console.warn(`No question found for ${member.name}, using fallback`);

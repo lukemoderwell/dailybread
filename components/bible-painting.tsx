@@ -11,7 +11,7 @@ interface BiblePaintingProps {
   reference: string;
   passage: string;
   familyMemberAges: number[];
-  sessionId?: string;
+  enabled?: boolean;
   paintingData?: {
     url: string;
     prompt: string;
@@ -29,7 +29,7 @@ export default function BiblePainting({
   reference,
   passage,
   familyMemberAges,
-  sessionId,
+  enabled = false,
   paintingData: initialPaintingData,
   onPaintingGenerated,
 }: BiblePaintingProps) {
@@ -37,14 +37,11 @@ export default function BiblePainting({
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Auto-generate painting if not provided
-  useEffect(() => {
-    if (!paintingData && !isGenerating && !error) {
-      generatePainting();
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
   const generatePainting = async (regenerate = false) => {
+    // Don't generate if disabled
+    if (!enabled) {
+      return;
+    }
     setIsGenerating(true);
     setError(null);
 
@@ -62,14 +59,14 @@ export default function BiblePainting({
 
       const data = await response.json();
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to generate painting');
+      // Check if painting was skipped (age-appropriateness or disabled in settings)
+      if (data.skipped) {
+        setError(data.error || 'Painting generation skipped');
+        return;
       }
 
-      // Check if painting was skipped due to age-appropriateness
-      if (data.skipped) {
-        setError(data.error);
-        return;
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to generate painting');
       }
 
       setPaintingData({
@@ -102,6 +99,18 @@ export default function BiblePainting({
       setIsGenerating(false);
     }
   };
+
+  // Auto-generate painting if not provided and enabled
+  useEffect(() => {
+    if (enabled && !paintingData && !isGenerating && !error) {
+      generatePainting();
+    }
+  }, [enabled]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Early return if paintings are disabled (after hooks)
+  if (!enabled) {
+    return null;
+  }
 
   const handleDownload = () => {
     if (!paintingData?.url) return;

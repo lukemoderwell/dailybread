@@ -90,7 +90,7 @@ export default function ReadingExperience({
   ttsVoice,
   enableTts,
   versesPerSession,
-  enablePaintings = true,
+  enablePaintings = false,
 }: ReadingExperienceProps) {
   const router = useRouter();
   const [state, setState] = useState<ReadingState>('loading');
@@ -117,10 +117,6 @@ export default function ReadingExperience({
     useState<Question | null>(null);
   const [feedbackText, setFeedbackText] = useState('');
   const [isRegenerating, setIsRegenerating] = useState(false);
-  const [verses, setVerses] = useState<string[]>([]);
-  const [wordTimestamps, setWordTimestamps] = useState<
-    Array<{ word: string; startSecond: number; endSecond: number }>
-  >([]);
 
   // Track passage metadata for sequential reading
   const [passageMetadata, setPassageMetadata] = useState<{
@@ -256,18 +252,11 @@ export default function ReadingExperience({
           versesRead: passageData.verses_read,
         });
 
-        // For verse tracking (TTS highlighting), extract plain text
+        // Extract plain text for question generation
         const plainText = htmlContent
           .replace(/<[^>]*>/g, ' ')
           .replace(/\s+/g, ' ')
           .trim();
-
-        // Split by verse numbers for highlighting (rough approximation)
-        // This is just for TTS tracking, not display
-        const verseArray = plainText
-          .split(/(?=\d+\s)/)
-          .filter((v: string) => v.trim().length > 0);
-        setVerses(verseArray);
 
         // Show content immediately - user can start reading while questions/audio load
         setState('ready');
@@ -324,6 +313,7 @@ export default function ReadingExperience({
     }
 
     loadContent();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     currentBook,
     currentChapter,
@@ -332,7 +322,7 @@ export default function ReadingExperience({
     bibleTranslation,
     ttsVoice,
     currentSessionId,
-  ]); // eslint-disable-line react-hooks/exhaustive-deps
+  ]);
 
   // Generate cache key for audio
   const generateCacheKey = (text: string, voice: string): string => {
@@ -432,7 +422,6 @@ export default function ReadingExperience({
         console.log('Using cached audio from IndexedDB');
         const url = URL.createObjectURL(cachedData.blob);
         setScriptureAudioUrl(url);
-        setWordTimestamps(cachedData.timestamps || []);
         setIsPreloadingAudio(false);
         return;
       }
@@ -462,7 +451,6 @@ export default function ReadingExperience({
         const url = URL.createObjectURL(audioBlob);
 
         setScriptureAudioUrl(url);
-        setWordTimestamps(data.wordTimestamps || []);
 
         // Cache the blob and timestamps in IndexedDB
         await setCachedAudio(cacheKey, audioBlob, data.wordTimestamps || []);
@@ -966,6 +954,7 @@ export default function ReadingExperience({
                     .replace(/\s+/g, ' ')
                     .trim()}
                   familyMemberAges={familyMembers.map((m) => m.age)}
+                  enabled={enablePaintings}
                   onPaintingGenerated={(data) => {
                     console.log('Painting generated:', data);
                     // Could save to session here if needed
@@ -1180,7 +1169,7 @@ export default function ReadingExperience({
           <DialogHeader>
             <DialogTitle>Help us improve this question</DialogTitle>
             <DialogDescription>
-              What wasn't quite right about this question for{' '}
+              What wasn&apos;t quite right about this question for{' '}
               {selectedQuestionForFeedback?.name}? (Optional)
             </DialogDescription>
           </DialogHeader>
@@ -1189,7 +1178,7 @@ export default function ReadingExperience({
             <div className="space-y-2">
               <p className="text-sm font-medium">Current question:</p>
               <p className="text-sm text-muted-foreground italic">
-                "{selectedQuestionForFeedback?.question}"
+                &ldquo;{selectedQuestionForFeedback?.question}&rdquo;
               </p>
             </div>
 

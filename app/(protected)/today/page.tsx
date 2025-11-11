@@ -52,7 +52,7 @@ export default async function TodayPage() {
         ttsVoice={preferences?.tts_voice || "onyx"}
         enableTts={preferences?.enable_tts ?? true}
         versesPerSession={preferences?.verses_per_session || 15}
-        enablePaintings={preferences?.enable_paintings ?? true}
+        enablePaintings={preferences?.enable_paintings ?? false}
       />
     </div>
   );
