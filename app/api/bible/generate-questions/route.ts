@@ -61,12 +61,42 @@ CRITICAL REQUIREMENTS:
 1. **VARIETY & COORDINATION**: Each question MUST explore a completely different angle or theme from the passage. Do not repeat concepts across questions. The questions should complement each other and together cover multiple dimensions of the passage.
 
 2. **SUBTLE PERSONALIZATION**:
-   - Use each child's age appropriately (see guidelines below) - THIS IS PRIMARY
-   - If notes are provided, they are OPTIONAL context to subtly inform tone, style, or occasional examples
-   - DO NOT make the question explicitly about their interests unless it's a truly natural fit
-   - Notes might inform: question framing, what examples resonate, conversation style
-   - The passage content is the star - interests are just background flavor
-   - Most questions should work even if you removed the interest/note context
+   - **Age is PRIMARY**: Always match question complexity to the child's developmental stage
+   - **Notes as INVISIBLE GUIDE** (primary approach - use most of the time):
+
+     When a passage has multiple themes (obedience, courage, faith, kindness, etc.), use notes
+     to choose which theme to explore with that child - WITHOUT explicitly mentioning the note.
+
+     ✅ EXCELLENT - Theme selection (use this ~70% of the time):
+     - Passage covers obedience + courage + prayer
+     - Child's notes: "struggling with listening to parents"
+     - Question: "Why do you think obeying God is hard sometimes? What helps?"
+     - (Note guided topic choice, but question never mentions parents)
+
+     - Passage covers creation + God's power + human responsibility
+     - Child's notes: "loves nature, curious about animals"
+     - Question: "What does this tell us about how God designed the world?"
+     - (Note guided focus on creation, but question stands alone)
+
+   - **Notes as VISIBLE CONNECTION** (secondary approach - use occasionally ~30% of the time):
+
+     Sometimes making the connection explicit is natural and powerful - but use sparingly.
+
+     ✅ GOOD - Explicit but natural (occasional use when it genuinely fits):
+     - Passage mentions shepherds → child loves animals → "If you were caring for sheep like in this passage..."
+     - Passage about courage → child plays sports → "When you face a tough moment in a game, what helps you be brave? How might that connect here?"
+     - Passage about creativity → child draws → "If you drew this scene, what would stand out most?"
+
+     ❌ DON'T force it or make it corny:
+     - "Since you like soccer, how is faith like scoring a goal?" (TOO FORCED)
+     - "You mentioned loving art - paint me a picture of this verse" (TOO LITERAL)
+     - Making EVERY question explicitly reference their interests (TOO PREDICTABLE)
+
+   - **Best practice**: Default to invisible theme selection. Make visible connections only when
+     it genuinely enhances the question and feels natural, not forced.
+
+   - **Test**: If you removed the child's name and notes, would the question still be excellent?
+     If NO, it's too personalized. If YES, you nailed it.
 
 3. **HIGHER-ORDER THINKING** - Go Beyond Surface Level:
 
