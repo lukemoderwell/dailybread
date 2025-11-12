@@ -648,6 +648,9 @@ export default function ReadingExperience({
 
       const supabase = createSupabaseClient();
 
+      // Get user's local date (YYYY-MM-DD format) to avoid timezone issues
+      const localDate = new Date().toLocaleDateString('en-CA'); // en-CA gives YYYY-MM-DD format
+
       // Save session with ending position metadata
       const { data: session, error: sessionError } = await supabase
         .from('reading_sessions')
@@ -656,6 +659,7 @@ export default function ReadingExperience({
           book: passageMetadata.startBook,
           chapter: passageMetadata.startChapter,
           verses_read: passageMetadata.versesRead,
+          date: localDate, // Explicitly set user's local date
           content: {
             scripture_text: passage,
             reference: reference,

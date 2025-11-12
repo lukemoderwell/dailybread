@@ -36,12 +36,12 @@ export async function POST(req: Request) {
         );
       }
 
-      // Check if there are any previous sessions
+      // Check if there are any previous sessions (most recent)
       const { data: sessions, error: sessionsError } = await supabase
         .from("reading_sessions")
         .select("id")
         .eq("user_id", user.id)
-        .order("id", { ascending: false })
+        .order("completed_at", { ascending: false })
         .limit(1);
 
       if (sessionsError) {
@@ -80,23 +80,23 @@ export async function POST(req: Request) {
       );
     }
 
-    // Get navigation metadata
-    // Previous = session with lower ID (older)
+    // Get navigation metadata using chronological order (completed_at)
+    // Previous = session completed before this one
     const { data: previousSessions } = await supabase
       .from("reading_sessions")
       .select("id")
       .eq("user_id", user.id)
-      .lt("id", sessionId)
-      .order("id", { ascending: false })
+      .lt("completed_at", session.completed_at)
+      .order("completed_at", { ascending: false })
       .limit(1);
 
-    // Next = session with higher ID (newer)
+    // Next = session completed after this one
     const { data: nextSessions } = await supabase
       .from("reading_sessions")
       .select("id")
       .eq("user_id", user.id)
-      .gt("id", sessionId)
-      .order("id", { ascending: true })
+      .gt("completed_at", session.completed_at)
+      .order("completed_at", { ascending: true })
       .limit(1);
 
     const hasPrevious = previousSessions && previousSessions.length > 0;
@@ -110,7 +110,7 @@ export async function POST(req: Request) {
       .from("reading_sessions")
       .select("id")
       .eq("user_id", user.id)
-      .order("id", { ascending: false })
+      .order("completed_at", { ascending: false })
       .limit(1);
 
     const isLatestSession = latestSession && latestSession[0].id === sessionId;
