@@ -15,6 +15,7 @@ import {
   ThumbsDown,
   MoreHorizontal,
   BarChart3,
+  Loader2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { createSupabaseClient } from '@/lib/supabase/client';
@@ -117,6 +118,8 @@ export default function ReadingExperience({
     useState<Question | null>(null);
   const [feedbackText, setFeedbackText] = useState('');
   const [isRegenerating, setIsRegenerating] = useState(false);
+  const [activeTab, setActiveTab] = useState('scripture');
+  const [isCompletingReading, setIsCompletingReading] = useState(false);
 
   // Track passage metadata for sequential reading
   const [passageMetadata, setPassageMetadata] = useState<{
@@ -156,6 +159,7 @@ export default function ReadingExperience({
         setQuestions([]);
         setPassageMetadata(null);
         setSessionSummary('');
+        setActiveTab('scripture'); // Always start on scripture tab
 
         // If viewing a historical session, load that session's data
         if (currentSessionId !== null) {
@@ -640,9 +644,11 @@ export default function ReadingExperience({
   };
 
   const completeReading = async () => {
+    setIsCompletingReading(true);
     try {
       if (!passageMetadata) {
         toast.error('Session data not loaded yet');
+        setIsCompletingReading(false);
         return;
       }
 
@@ -736,11 +742,15 @@ export default function ReadingExperience({
 
       toast.success('Great job! See you tomorrow!');
 
+      // Switch to scripture tab for the next reading
+      setActiveTab('scripture');
+
       // Refresh to get new reading
       router.refresh();
     } catch (error) {
       console.error('Complete reading error:', error);
       toast.error('Failed to save progress');
+      setIsCompletingReading(false);
     }
   };
 
@@ -850,7 +860,7 @@ export default function ReadingExperience({
         </div>
       )}
 
-      <Tabs defaultValue="scripture" className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-2 h-12">
           <TabsTrigger value="scripture" className="text-base">
             Scripture
@@ -1127,10 +1137,20 @@ export default function ReadingExperience({
                   <Button
                     size="lg"
                     onClick={completeReading}
+                    disabled={isCompletingReading}
                     className="w-full h-16 mt-6"
                   >
-                    <Check className="h-6 w-6 mr-2" />
-                    Mark as Complete
+                    {isCompletingReading ? (
+                      <>
+                        <Loader2 className="h-6 w-6 mr-2 animate-spin" />
+                        Completing...
+                      </>
+                    ) : (
+                      <>
+                        <Check className="h-6 w-6 mr-2" />
+                        Mark as Complete
+                      </>
+                    )}
                   </Button>
                 )}
               </>
