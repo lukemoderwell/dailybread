@@ -24,6 +24,7 @@ import {
   calculateEndingPosition,
   type VersePosition,
 } from '@/lib/bible-metadata';
+import { getLocalDateISO } from '@/lib/dates';
 import {
   Dialog,
   DialogContent,
@@ -98,7 +99,6 @@ export default function ReadingExperience({
     useState<Question | null>(null);
   const [feedbackText, setFeedbackText] = useState('');
   const [isRegenerating, setIsRegenerating] = useState(false);
-  const [activeTab, setActiveTab] = useState('scripture');
   const [isCompletingReading, setIsCompletingReading] = useState(false);
 
   // Track passage metadata for sequential reading
@@ -139,7 +139,6 @@ export default function ReadingExperience({
         setQuestions([]);
         setPassageMetadata(null);
         setSessionSummary('');
-        setActiveTab('scripture'); // Always start on scripture tab
 
         // If viewing a historical session, load that session's data
         if (currentSessionId !== null) {
@@ -432,8 +431,8 @@ export default function ReadingExperience({
 
       const supabase = createSupabaseClient();
 
-      // Get user's local date (YYYY-MM-DD format) to avoid timezone issues
-      const localDate = new Date().toLocaleDateString('en-CA'); // en-CA gives YYYY-MM-DD format
+      // Get user's local date in ISO format to avoid timezone issues
+      const localDate = getLocalDateISO();
 
       // Save session with ending position metadata
       const { data: session, error: sessionError } = await supabase
@@ -520,10 +519,7 @@ export default function ReadingExperience({
 
       toast.success('Great job! See you tomorrow!');
 
-      // Switch to scripture tab for the next reading
-      setActiveTab('scripture');
-
-      // Refresh to get new reading
+      // Refresh to get new reading (this unmounts the component and reloads from scratch)
       router.refresh();
     } catch (error) {
       console.error('Complete reading error:', error);
@@ -638,7 +634,7 @@ export default function ReadingExperience({
         </div>
       )}
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+      <Tabs defaultValue="scripture" className="w-full">
         <TabsList className="grid w-full grid-cols-2 h-12">
           <TabsTrigger value="scripture" className="text-base">
             Scripture
