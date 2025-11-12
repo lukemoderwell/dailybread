@@ -717,6 +717,24 @@ export default function ReadingExperience({
                     opacity: 0.95;
                   }
 
+                  /* Section headings (e.g., "Jesus Knows What People Are Like") */
+                  .scripture-content :global(.s),
+                  .scripture-content :global(.s1) {
+                    display: block;
+                    margin-top: 1.75rem;
+                    margin-bottom: 0.85rem;
+                    font-size: 1.12em;
+                    line-height: 1.4;
+                    font-weight: 600;
+                    letter-spacing: -0.01em;
+                    color: hsl(var(--foreground));
+                  }
+
+                  .scripture-content :global(.s:first-child),
+                  .scripture-content :global(.s1:first-child) {
+                    margin-top: 0.5rem;
+                  }
+
                   /* Improve text rendering */
                   .scripture-content {
                     text-rendering: optimizeLegibility;
