@@ -43,7 +43,7 @@ export default async function SettingsPage() {
           </Button>
         </Link>
         <div>
-          <h1 className="text-xl lg:text-3xl font-bold">Settings</h1>
+          <h1 className="text-xl font-bold">Settings</h1>
           <p className="text-muted-foreground mt-2">
             Customize your Bible reading experience
           </p>

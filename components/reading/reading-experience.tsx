@@ -1,12 +1,10 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-  Play,
-  Pause,
   Check,
   Settings,
   ChevronLeft,
@@ -67,19 +65,11 @@ interface ReadingExperienceProps {
   currentStreak: number;
   longestStreak: number;
   bibleTranslation: string;
-  ttsVoice: string;
-  enableTts: boolean;
   versesPerSession: number;
   enablePaintings?: boolean;
 }
 
-type ReadingState =
-  | 'loading'
-  | 'ready'
-  | 'playing-scripture'
-  | 'scripture-complete'
-  | 'playing-question'
-  | 'all-complete';
+type ReadingState = 'loading' | 'ready';
 
 export default function ReadingExperience({
   userId,
@@ -88,8 +78,6 @@ export default function ReadingExperience({
   currentChapter,
   currentVerse,
   bibleTranslation,
-  ttsVoice,
-  enableTts,
   versesPerSession,
   enablePaintings = false,
 }: ReadingExperienceProps) {
@@ -98,15 +86,7 @@ export default function ReadingExperience({
   const [passage, setPassage] = useState('');
   const [reference, setReference] = useState('');
   const [questions, setQuestions] = useState<Question[]>([]);
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(false);
   const [isLoadingQuestions, setIsLoadingQuestions] = useState(true);
-
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const [scriptureAudioUrl, setScriptureAudioUrl] = useState<string | null>(
-    null
-  );
-  const [isPreloadingAudio, setIsPreloadingAudio] = useState(false);
   const [answeredQuestions, setAnsweredQuestions] = useState<Set<number>>(
     new Set()
   );
@@ -262,10 +242,10 @@ export default function ReadingExperience({
           .replace(/\s+/g, ' ')
           .trim();
 
-        // Show content immediately - user can start reading while questions/audio load
+        // Show content immediately - user can start reading while questions load
         setState('ready');
 
-        // Load questions and TTS in parallel (non-blocking)
+        // Load questions in parallel (non-blocking)
         Promise.all([
           // Generate questions
           fetch('/api/bible/generate-questions', {
@@ -289,11 +269,6 @@ export default function ReadingExperience({
               setIsLoadingQuestions(false);
             }),
 
-          // Preload scripture audio if TTS is enabled
-          enableTts
-            ? preloadAudio(plainText, passageData.reference)
-            : Promise.resolve(),
-
           // Fetch navigation metadata for current reading
           fetch('/api/bible/sessions', {
             method: 'POST',
@@ -306,7 +281,7 @@ export default function ReadingExperience({
             }
           }),
         ]).catch((error) => {
-          console.error('Error loading questions/audio:', error);
+          console.error('Error loading questions:', error);
           setIsLoadingQuestions(false);
           // Don't block the UI - content is already showing
         });
@@ -324,150 +299,8 @@ export default function ReadingExperience({
     currentVerse,
     familyMembers,
     bibleTranslation,
-    ttsVoice,
     currentSessionId,
   ]);
-
-  // Generate cache key for audio
-  const generateCacheKey = (text: string, voice: string): string => {
-    // Simple hash function
-    const str = `${text}:${voice}`;
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      const char = str.charCodeAt(i);
-      hash = (hash << 5) - hash + char;
-      hash = hash & hash;
-    }
-    return `tts_audio_${Math.abs(hash).toString(36)}`;
-  };
-
-  // IndexedDB helper functions
-  const openAudioCache = (): Promise<IDBDatabase> => {
-    return new Promise((resolve, reject) => {
-      const request = indexedDB.open('AudioCache', 2); // Bumped version to clear old cache
-
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => resolve(request.result);
-
-      request.onupgradeneeded = (event) => {
-        const db = (event.target as IDBOpenDBRequest).result;
-
-        // Delete old object store if it exists
-        if (db.objectStoreNames.contains('audio')) {
-          db.deleteObjectStore('audio');
-        }
-
-        // Create fresh object store
-        db.createObjectStore('audio');
-      };
-    });
-  };
-
-  const getCachedAudio = async (
-    key: string
-  ): Promise<{
-    blob: Blob;
-    timestamps: Array<{ word: string; startSecond: number; endSecond: number }>;
-  } | null> => {
-    try {
-      const db = await openAudioCache();
-      return new Promise((resolve, reject) => {
-        const transaction = db.transaction(['audio'], 'readonly');
-        const store = transaction.objectStore('audio');
-        const request = store.get(key);
-
-        request.onsuccess = () => {
-          const result = request.result;
-          if (result && result.blob instanceof Blob) {
-            resolve(result);
-          } else {
-            resolve(null);
-          }
-        };
-        request.onerror = () => reject(request.error);
-      });
-    } catch (error) {
-      console.error('Error getting cached audio:', error);
-      return null;
-    }
-  };
-
-  const setCachedAudio = async (
-    key: string,
-    blob: Blob,
-    timestamps: Array<{ word: string; startSecond: number; endSecond: number }>
-  ): Promise<void> => {
-    try {
-      const db = await openAudioCache();
-      return new Promise((resolve, reject) => {
-        const transaction = db.transaction(['audio'], 'readwrite');
-        const store = transaction.objectStore('audio');
-        const request = store.put({ blob, timestamps }, key);
-
-        request.onsuccess = () => resolve();
-        request.onerror = () => reject(request.error);
-      });
-    } catch (error) {
-      console.error('Error caching audio:', error);
-    }
-  };
-
-  // Preload scripture audio only
-  const preloadAudio = async (passageText: string, ref: string) => {
-    setIsPreloadingAudio(true);
-
-    try {
-      const fullText = `${ref}. ${passageText}`;
-      const cacheKey = generateCacheKey(fullText, ttsVoice);
-
-      // Check IndexedDB cache first
-      const cachedData = await getCachedAudio(cacheKey);
-      if (cachedData) {
-        console.log('Using cached audio from IndexedDB');
-        const url = URL.createObjectURL(cachedData.blob);
-        setScriptureAudioUrl(url);
-        setIsPreloadingAudio(false);
-        return;
-      }
-
-      // Generate scripture audio
-      console.log('Generating new audio...');
-      const scriptureResponse = await fetch('/api/tts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          text: fullText,
-          voice: ttsVoice,
-        }),
-      });
-
-      if (scriptureResponse.ok) {
-        const data = await scriptureResponse.json();
-
-        // Convert base64 audio back to blob
-        const audioData = atob(data.audio);
-        const arrayBuffer = new ArrayBuffer(audioData.length);
-        const view = new Uint8Array(arrayBuffer);
-        for (let i = 0; i < audioData.length; i++) {
-          view[i] = audioData.charCodeAt(i);
-        }
-        const audioBlob = new Blob([arrayBuffer], { type: 'audio/mpeg' });
-        const url = URL.createObjectURL(audioBlob);
-
-        setScriptureAudioUrl(url);
-
-        // Cache the blob and timestamps in IndexedDB
-        await setCachedAudio(cacheKey, audioBlob, data.wordTimestamps || []);
-        console.log('Audio cached to IndexedDB with timestamps');
-
-        console.log('Scripture audio preloaded');
-      }
-    } catch (error) {
-      console.error('Audio preload error:', error);
-    } finally {
-      setIsPreloadingAudio(false);
-    }
-  };
 
   const toggleQuestion = (index: number) => {
     const newAnswered = new Set(answeredQuestions);
@@ -566,61 +399,6 @@ export default function ReadingExperience({
       toast.error('Failed to regenerate question');
     } finally {
       setIsRegenerating(false);
-    }
-  };
-
-  // Play preloaded audio
-  const playPreloadedAudio = (url: string, type: 'scripture' | 'question') => {
-    setIsPlaying(true);
-
-    const audio = new Audio();
-    audio.src = url;
-    audioRef.current = audio;
-
-    audio.onended = () => {
-      setIsPlaying(false);
-      if (type === 'scripture') {
-        setState('scripture-complete');
-      } else {
-        // Move to next question or complete
-        if (currentQuestionIndex < questions.length - 1) {
-          setCurrentQuestionIndex(currentQuestionIndex + 1);
-          setState('scripture-complete');
-        } else {
-          setState('all-complete');
-        }
-      }
-    };
-
-    audio.onerror = () => {
-      setIsPlaying(false);
-      toast.error('Audio playback failed');
-    };
-
-    // Note: Verse highlighting during TTS playback has been removed
-    // Could be re-enabled in the future if needed
-
-    audio.play();
-
-    if (type === 'scripture') {
-      setState('playing-scripture');
-    } else {
-      setState('playing-question');
-    }
-  };
-
-  const pauseAudio = () => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      setIsPlaying(false);
-    }
-  };
-
-  const startScripture = () => {
-    if (scriptureAudioUrl) {
-      playPreloadedAudio(scriptureAudioUrl, 'scripture');
-    } else {
-      toast.error('Audio is still loading, please wait...');
     }
   };
 
@@ -1158,34 +936,6 @@ export default function ReadingExperience({
           </div>
         </TabsContent>
       </Tabs>
-
-      {/* Floating Action Button for Audio Control - only show if TTS is enabled */}
-      {enableTts &&
-        (state === 'ready' ||
-          state === 'scripture-complete' ||
-          state === 'playing-scripture') && (
-          <div className="fixed bottom-6 right-6 z-50">
-            {!isPlaying ? (
-              <Button
-                size="lg"
-                onClick={startScripture}
-                disabled={!scriptureAudioUrl || isPreloadingAudio}
-                className="h-16 w-16 rounded-full shadow-lg hover:shadow-xl transition-all"
-              >
-                <Play className="h-8 w-8" />
-              </Button>
-            ) : (
-              <Button
-                size="lg"
-                onClick={pauseAudio}
-                variant="outline"
-                className="h-16 w-16 rounded-full shadow-lg hover:shadow-xl transition-all bg-background"
-              >
-                <Pause className="h-8 w-8" />
-              </Button>
-            )}
-          </div>
-        )}
 
       {/* Feedback Dialog */}
       <Dialog open={feedbackDialogOpen} onOpenChange={setFeedbackDialogOpen}>

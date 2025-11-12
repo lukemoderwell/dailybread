@@ -38,9 +38,7 @@ interface FamilyMember {
 
 interface UserPreferences {
   bible_translation: string;
-  tts_voice: string;
   daily_reading_minutes: number;
-  enable_tts: boolean;
   verses_per_session: number;
   enable_paintings?: boolean;
   painting_style_preference?: string;
@@ -69,15 +67,6 @@ const BIBLE_TRANSLATIONS = [
   { id: "bba9f40183526463-01", name: "Berean Standard Bible (BSB)" },
   { id: "555fef9a6cb31151-01", name: "Contemporary English Version (CEV)" },
   { id: "01b29f4b342acc35-01", name: "Literal Standard Version (LSV)" },
-];
-
-const TTS_VOICES = [
-  { id: "alloy", name: "Alloy (Neutral)" },
-  { id: "echo", name: "Echo (Warm)" },
-  { id: "fable", name: "Fable (Expressive)" },
-  { id: "onyx", name: "Onyx (Deep)" },
-  { id: "nova", name: "Nova (Clear)" },
-  { id: "shimmer", name: "Shimmer (Bright)" },
 ];
 
 const BIBLE_BOOKS = [
@@ -115,14 +104,8 @@ export default function SettingsForm({
   const [translation, setTranslation] = useState(
     initialPreferences?.bible_translation || "de4e12af7f28f599-02"
   );
-  const [voice, setVoice] = useState(
-    initialPreferences?.tts_voice || "onyx"
-  );
   const [readingMinutes, setReadingMinutes] = useState(
     initialPreferences?.daily_reading_minutes || 10
-  );
-  const [enableTts, setEnableTts] = useState(
-    initialPreferences?.enable_tts ?? true
   );
   const [enablePaintings, setEnablePaintings] = useState(
     initialPreferences?.enable_paintings ?? false
@@ -250,9 +233,7 @@ export default function SettingsForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           bible_translation: translation,
-          tts_voice: voice,
           daily_reading_minutes: readingMinutes,
-          enable_tts: enableTts,
           verses_per_session: versesPerSession,
           enable_paintings: enablePaintings,
         }),
@@ -500,46 +481,6 @@ export default function SettingsForm({
               ))}
             </SelectContent>
           </Select>
-        </CardContent>
-      </Card>
-
-      {/* Text-to-Speech */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Text-to-Speech (TTS)</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <Label htmlFor="enable-tts">Enable TTS Audio</Label>
-              <p className="text-sm text-muted-foreground">
-                Generate audio for Bible passages (disabling saves API costs)
-              </p>
-            </div>
-            <Switch
-              id="enable-tts"
-              checked={enableTts}
-              onCheckedChange={setEnableTts}
-            />
-          </div>
-
-          {enableTts && (
-            <div className="pt-4 border-t space-y-2">
-              <Label>Voice Style</Label>
-              <Select value={voice} onValueChange={setVoice}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {TTS_VOICES.map((v) => (
-                    <SelectItem key={v.id} value={v.id}>
-                      {v.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
         </CardContent>
       </Card>
 

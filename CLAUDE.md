@@ -436,3 +436,4 @@ git push origin main
 ---
 
 Built for rapid development with Claude Code 🚀
+- make sure to add any docs or md files to my /docs folder and make it organized

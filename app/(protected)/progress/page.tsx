@@ -97,7 +97,7 @@ export default async function ProgressPage() {
               </Button>
             </Link>
             <div>
-              <h1 className="text-3xl font-bold">Your Progress</h1>
+              <h1 className="text-xl font-bold">Your Progress</h1>
               <p className="text-muted-foreground">Track your journey through the Bible</p>
             </div>
           </div>

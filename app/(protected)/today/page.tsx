@@ -49,8 +49,6 @@ export default async function TodayPage() {
         currentStreak={progress.current_streak}
         longestStreak={progress.longest_streak}
         bibleTranslation={preferences?.bible_translation || "de4e12af7f28f599-02"}
-        ttsVoice={preferences?.tts_voice || "onyx"}
-        enableTts={preferences?.enable_tts ?? true}
         versesPerSession={preferences?.verses_per_session || 15}
         enablePaintings={preferences?.enable_paintings ?? false}
       />

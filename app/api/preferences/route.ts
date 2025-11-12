@@ -13,13 +13,11 @@ export async function POST(req: Request) {
       );
     }
 
-    const { 
-      bible_translation, 
-      tts_voice, 
-      daily_reading_minutes, 
-      enable_tts, 
+    const {
+      bible_translation,
+      daily_reading_minutes,
       verses_per_session,
-      enable_paintings 
+      enable_paintings
     } = await req.json();
 
     const { error } = await supabase
@@ -27,9 +25,7 @@ export async function POST(req: Request) {
       .upsert({
         user_id: user.id,
         bible_translation,
-        tts_voice,
         daily_reading_minutes,
-        enable_tts: enable_tts ?? true,
         verses_per_session: verses_per_session ?? 15,
         enable_paintings: enable_paintings ?? false,
       });
