@@ -84,6 +84,9 @@ export default async function ProgressPage() {
 
   const completedBooks = Object.values(bookProgress).filter(p => p === 100).length;
   const totalSessions = sessions.length;
+  const totalBibleProgress = Math.round(
+    Object.values(bookProgress).reduce((acc, curr) => acc + curr, 0) / 66
+  );
 
   return (
     <div className="min-h-screen bg-background">
@@ -126,7 +129,7 @@ export default async function ProgressPage() {
             <CardContent>
               <div className="text-2xl font-bold">{completedBooks} / 66</div>
               <p className="text-xs text-muted-foreground">
-                {Math.round((completedBooks / 66) * 100)}% of the Bible
+                {totalBibleProgress}% of the Bible
               </p>
             </CardContent>
           </Card>

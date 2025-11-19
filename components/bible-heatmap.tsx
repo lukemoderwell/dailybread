@@ -65,10 +65,15 @@ function getSectionStats(
     return completion > 0 && completion < 100;
   }).length;
 
+  // Calculate overall percentage based on progress of all books in section
+  const totalProgress = books.reduce((sum, book) => {
+    return sum + (completedBooks[book] || 0);
+  }, 0);
+
   return {
     completed,
     inProgress,
-    percent: Math.round((completed / books.length) * 100),
+    percent: Math.round(totalProgress / books.length),
   };
 }
 
