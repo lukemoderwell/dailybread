@@ -98,3 +98,32 @@
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
+
+@layer utilities {
+  /* Enhanced bottom sheet animations */
+  @keyframes slide-up-spring {
+    from {
+      transform: translateY(100%);
+    }
+    to {
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes slide-down-spring {
+    from {
+      transform: translateY(0);
+    }
+    to {
+      transform: translateY(100%);
+    }
+  }
+
+  .animate-slide-up-spring {
+    animation: slide-up-spring 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .animate-slide-down-spring {
+    animation: slide-down-spring 0.3s cubic-bezier(0.4, 0, 1, 1);
+  }
+}
