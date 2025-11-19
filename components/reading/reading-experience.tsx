@@ -6,19 +6,17 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Check,
-  Settings,
   ChevronLeft,
   ChevronRight,
   ThumbsUp,
   ThumbsDown,
   MoreHorizontal,
-  BarChart3,
+  MessageSquare,
   Loader2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { createSupabaseClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { getColorById } from '@/lib/colors';
 import {
   calculateEndingPosition,
@@ -100,6 +98,7 @@ export default function ReadingExperience({
   const [feedbackText, setFeedbackText] = useState('');
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [isCompletingReading, setIsCompletingReading] = useState(false);
+  const [activeTab, setActiveTab] = useState('scripture');
 
   // Track passage metadata for sequential reading
   const [passageMetadata, setPassageMetadata] = useState<{
@@ -598,18 +597,7 @@ export default function ReadingExperience({
             </Button>
           )}
         </div>
-        <div className="flex items-center gap-2">
-          <Link href="/progress">
-            <Button variant="ghost" size="icon">
-              <BarChart3 className="h-5 w-5" />
-            </Button>
-          </Link>
-          <Link href="/settings">
-            <Button variant="ghost" size="icon">
-              <Settings className="h-5 w-5" />
-            </Button>
-          </Link>
-        </div>
+        {/* Navigation moved to layout (BottomNav on mobile, Header on desktop) */}
       </div>
 
       {isHistoricalView && (
@@ -634,7 +622,7 @@ export default function ReadingExperience({
         </div>
       )}
 
-      <Tabs defaultValue="scripture" className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-2 h-12">
           <TabsTrigger value="scripture" className="text-base">
             Scripture
@@ -652,9 +640,7 @@ export default function ReadingExperience({
                 <style jsx>{`
                   .scripture-content {
                     /* Medium-inspired typography */
-                    font-family: Charter, 'Bitstream Charter', 'Sitka Text',
-                      Cambria, 'Georgia Pro', Georgia, 'Times New Roman', Times,
-                      serif;
+                    font-family: var(--font-serif), serif;
                     font-size: 1.125rem;
                     line-height: 1.7;
                     text-align: left;
@@ -767,6 +753,18 @@ export default function ReadingExperience({
                   }}
                 />
               )}
+
+              {/* Continue to Questions Button */}
+              <div className="mt-8 flex justify-center">
+                <Button
+                  size="lg"
+                  className="w-full md:w-auto min-w-[200px]"
+                  onClick={() => setActiveTab('questions')}
+                >
+                  <MessageSquare className="mr-2 h-5 w-5" />
+                  Discuss Questions
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -782,7 +780,7 @@ export default function ReadingExperience({
                     <CardContent className="pt-6">
                       <div className="space-y-4">
                         <div className="flex items-start gap-4">
-                          <div className="w-6 h-6 bg-muted animate-pulse rounded flex-shrink-0 mt-1"></div>
+                          <div className="w-6 h-6 bg-muted animate-pulse rounded shrink-0 mt-1"></div>
                           <div className="flex-1 space-y-3">
                             <div className="flex items-center justify-between">
                               <div className="h-6 w-32 bg-muted animate-pulse rounded"></div>
@@ -809,10 +807,15 @@ export default function ReadingExperience({
                   return (
                     <Card
                       key={question.familyMemberId}
-                      className={
-                        answeredQuestions.has(index) ? 'opacity-60' : ''
-                      }
+                      className={`transition-all duration-300 border-0 ${
+                        answeredQuestions.has(index)
+                          ? 'opacity-60 saturate-50 bg-muted/50'
+                          : 'shadow-sm hover:shadow-md'
+                      }`}
                       style={{
+                        backgroundColor: answeredQuestions.has(index)
+                          ? undefined
+                          : `color-mix(in srgb, ${memberColor.value}, transparent 92%)`,
                         borderLeft: `4px solid ${memberColor.value}`,
                       }}
                     >
@@ -821,7 +824,7 @@ export default function ReadingExperience({
                           <div className="flex items-start gap-4">
                             <button
                               onClick={() => toggleQuestion(index)}
-                              className="mt-1 flex-shrink-0"
+                              className="mt-1 shrink-0"
                             >
                               <div
                                 className={`w-6 h-6 rounded border-2 flex items-center justify-center transition-colors`}
@@ -843,7 +846,7 @@ export default function ReadingExperience({
                             <div className="flex-1">
                               <div className="flex items-center gap-3 mb-3">
                                 <div
-                                  className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
+                                  className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0"
                                   style={{
                                     backgroundColor: memberColor.value,
                                     color: memberColor.textColor,
