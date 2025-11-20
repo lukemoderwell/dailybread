@@ -122,6 +122,8 @@ export interface Database {
           user_id: string;
           name: string;
           age: number;
+          color: string;
+          notes: string | null;
           created_at: string;
         };
         Insert: {
@@ -129,6 +131,8 @@ export interface Database {
           user_id: string;
           name: string;
           age: number;
+          color?: string;
+          notes?: string | null;
           created_at?: string;
         };
         Update: {
@@ -136,7 +140,47 @@ export interface Database {
           user_id?: string;
           name?: string;
           age?: number;
+          color?: string;
+          notes?: string | null;
           created_at?: string;
+        };
+      };
+      user_preferences: {
+        Row: {
+          user_id: string;
+          bible_translation: string;
+          tts_voice: string;
+          daily_reading_minutes: number;
+          enable_tts: boolean;
+          verses_per_session: number;
+          enable_paintings: boolean;
+          painting_style_preference: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          bible_translation?: string;
+          tts_voice?: string;
+          daily_reading_minutes?: number;
+          enable_tts?: boolean;
+          verses_per_session?: number;
+          enable_paintings?: boolean;
+          painting_style_preference?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          bible_translation?: string;
+          tts_voice?: string;
+          daily_reading_minutes?: number;
+          enable_tts?: boolean;
+          verses_per_session?: number;
+          enable_paintings?: boolean;
+          painting_style_preference?: string;
+          created_at?: string;
+          updated_at?: string;
         };
       };
       reading_progress: {

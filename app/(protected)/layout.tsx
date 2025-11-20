@@ -17,7 +17,7 @@ export default function ProtectedLayout({
           className="flex items-center gap-2 font-bold text-xl"
         >
           <BookOpen className="h-6 w-6 text-primary" />
-          <span className="font-serif">Daily Bread</span>
+          <span>dailybread</span>
         </Link>
         <nav className="flex items-center gap-1">
           <Button variant="ghost" asChild>
