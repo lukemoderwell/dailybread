@@ -38,7 +38,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import BiblePainting from '@/components/bible-painting';
+// import BiblePainting from '@/components/bible-painting';
 
 interface FamilyMember {
   id: string;
@@ -65,7 +65,7 @@ interface ReadingExperienceProps {
   longestStreak: number;
   bibleTranslation: string;
   versesPerSession: number;
-  enablePaintings?: boolean;
+  // enablePaintings?: boolean;
 }
 
 type ReadingState = 'loading' | 'ready';
@@ -78,7 +78,7 @@ export default function ReadingExperience({
   currentVerse,
   bibleTranslation,
   versesPerSession,
-  enablePaintings = false,
+  // enablePaintings = false,
 }: ReadingExperienceProps) {
   const router = useRouter();
   const [state, setState] = useState<ReadingState>('loading');
@@ -737,8 +737,8 @@ export default function ReadingExperience({
                   dangerouslySetInnerHTML={{ __html: passage }}
                 />
               </div>
-              {/* Bible Painting */}
-              {enablePaintings && passage && !isHistoricalView && (
+              {/* Bible Painting - Commented out for now */}
+              {/* {enablePaintings && passage && !isHistoricalView && (
                 <BiblePainting
                   reference={reference}
                   passage={passage
@@ -752,7 +752,7 @@ export default function ReadingExperience({
                     // Could save to session here if needed
                   }}
                 />
-              )}
+              )} */}
 
               {/* Continue to Questions Button */}
               <div className="mt-8 flex justify-center">

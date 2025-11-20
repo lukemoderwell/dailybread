@@ -17,7 +17,7 @@ export async function POST(req: Request) {
       bible_translation,
       daily_reading_minutes,
       verses_per_session,
-      enable_paintings
+      // enable_paintings
     } = await req.json();
 
     const { error } = await supabase
@@ -27,7 +27,7 @@ export async function POST(req: Request) {
         bible_translation,
         daily_reading_minutes,
         verses_per_session: verses_per_session ?? 15,
-        enable_paintings: enable_paintings ?? false,
+        // enable_paintings: enable_paintings ?? false,
       });
 
     if (error) {

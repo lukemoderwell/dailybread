@@ -25,7 +25,7 @@ import {
   User,
   Moon,
   Sun,
-  Palette,
+  // Palette,
   LogOut,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -173,9 +173,9 @@ export default function SettingsForm({
   const [readingMinutes, setReadingMinutes] = useState(
     initialPreferences?.daily_reading_minutes || 10
   );
-  const [enablePaintings, setEnablePaintings] = useState(
-    initialPreferences?.enable_paintings ?? false
-  );
+  // const [enablePaintings, setEnablePaintings] = useState(
+  //   initialPreferences?.enable_paintings ?? false
+  // );
 
   // Calculate verses per session based on reading minutes
   // Average reading speed: ~3 verses per minute
@@ -304,7 +304,7 @@ export default function SettingsForm({
           bible_translation: translation,
           daily_reading_minutes: readingMinutes,
           verses_per_session: versesPerSession,
-          enable_paintings: enablePaintings,
+          // enable_paintings: enablePaintings,
         }),
       });
 
@@ -595,8 +595,8 @@ export default function SettingsForm({
           </CardContent>
         </Card>
 
-        {/* Bible Paintings */}
-        <Card>
+        {/* Bible Paintings - Commented out for now */}
+        {/* <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Palette className="h-5 w-5" />
@@ -626,7 +626,7 @@ export default function SettingsForm({
               </p>
             )}
           </CardContent>
-        </Card>
+        </Card> */}
 
         {/* Reading Length */}
         <Card>
