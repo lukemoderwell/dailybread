@@ -50,7 +50,7 @@ export default async function TodayPage() {
         longestStreak={progress.longest_streak}
         bibleTranslation={preferences?.bible_translation || "de4e12af7f28f599-02"}
         versesPerSession={preferences?.verses_per_session || 15}
-        enablePaintings={preferences?.enable_paintings ?? false}
+        // enablePaintings={preferences?.enable_paintings ?? false}
       />
     </div>
   );

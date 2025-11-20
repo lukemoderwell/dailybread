@@ -1,5 +1,5 @@
 /**
- * Date utilities for Daily Bread
+ * Date utilities for dailybread
  *
  * These functions handle date formatting and timezone conversions
  * to ensure consistent date handling across client and server.

@@ -1,6 +1,6 @@
-# Daily Bread Documentation
+# dailybread Documentation
 
-This folder contains technical documentation, session notes, and guidelines for the Daily Bread project.
+This folder contains technical documentation, session notes, and guidelines for the dailybread project.
 
 ## 📁 Directory Structure
 
@@ -16,7 +16,9 @@ docs/
 ## 📄 Document Types
 
 ### Session Notes
+
 Files named `session-YYYY-MM-DD.md` document work completed in each coding session:
+
 - Bug fixes
 - Feature additions/removals
 - Code quality improvements
@@ -26,6 +28,7 @@ Files named `session-YYYY-MM-DD.md` document work completed in each coding sessi
 **Latest**: [session-2025-11-11.md](./session-2025-11-11.md)
 
 ### Guidelines
+
 - [code-quality-improvements.md](./code-quality-improvements.md) - DHH-inspired code quality standards and refactoring opportunities
 
 ---
@@ -33,9 +36,11 @@ Files named `session-YYYY-MM-DD.md` document work completed in each coding sessi
 ## 🎯 Quick Reference
 
 ### Recent Work
+
 - **2025-11-11**: Fixed streak calculation bug, removed TTS feature, quick code quality wins
 
 ### Key Patterns
+
 - Date handling: Use `getLocalDateISO()` from `lib/dates.ts`
 - State management: Question before adding useState
 - Component size: Keep components focused and under 500 lines
@@ -48,11 +53,13 @@ Files named `session-YYYY-MM-DD.md` document work completed in each coding sessi
 When documenting new work:
 
 1. **Create session notes** for significant changes:
+
    ```bash
    touch docs/session-$(date +%Y-%m-%d).md
    ```
 
 2. **Include**:
+
    - What was changed
    - Why it was changed
    - How to test

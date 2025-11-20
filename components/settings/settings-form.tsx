@@ -25,7 +25,8 @@ import {
   User,
   Moon,
   Sun,
-  Palette,
+  // Palette,
+  LogOut,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { createSupabaseClient } from '@/lib/supabase/client';
@@ -36,6 +37,7 @@ import {
   getNextAvailableColor,
   getColorById,
 } from '@/lib/colors';
+import { BIBLE_TRANSLATIONS } from '@/lib/bible-translations';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -79,15 +81,6 @@ interface SettingsFormProps {
   initialFamilyMembers: FamilyMember[];
   initialReadingProgress: ReadingProgress | null;
 }
-
-const BIBLE_TRANSLATIONS = [
-  { id: 'de4e12af7f28f599-02', name: 'King James Version (KJV)' },
-  { id: '06125adad2d5898a-01', name: 'American Standard Version (ASV)' },
-  { id: '9879dbb7cfe39e4d-04', name: 'World English Bible (WEB)' },
-  { id: 'bba9f40183526463-01', name: 'Berean Standard Bible (BSB)' },
-  { id: '555fef9a6cb31151-01', name: 'Contemporary English Version (CEV)' },
-  { id: '01b29f4b342acc35-01', name: 'Literal Standard Version (LSV)' },
-];
 
 const BIBLE_BOOKS = [
   'Genesis',
@@ -180,9 +173,9 @@ export default function SettingsForm({
   const [readingMinutes, setReadingMinutes] = useState(
     initialPreferences?.daily_reading_minutes || 10
   );
-  const [enablePaintings, setEnablePaintings] = useState(
-    initialPreferences?.enable_paintings ?? false
-  );
+  // const [enablePaintings, setEnablePaintings] = useState(
+  //   initialPreferences?.enable_paintings ?? false
+  // );
 
   // Calculate verses per session based on reading minutes
   // Average reading speed: ~3 verses per minute
@@ -311,7 +304,7 @@ export default function SettingsForm({
           bible_translation: translation,
           daily_reading_minutes: readingMinutes,
           verses_per_session: versesPerSession,
-          enable_paintings: enablePaintings,
+          // enable_paintings: enablePaintings,
         }),
       });
 
@@ -459,6 +452,19 @@ export default function SettingsForm({
     }
   };
 
+  const handleLogout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      
+      toast.success('Logged out successfully');
+      router.push('/login');
+    } catch (error) {
+      console.error('Error logging out:', error);
+      toast.error('Failed to log out');
+    }
+  };
+
   return (
     <Tabs defaultValue="reading" className="w-full">
       <TabsList className="grid w-full grid-cols-3 mb-8">
@@ -589,8 +595,8 @@ export default function SettingsForm({
           </CardContent>
         </Card>
 
-        {/* Bible Paintings */}
-        <Card>
+        {/* Bible Paintings - Commented out for now */}
+        {/* <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Palette className="h-5 w-5" />
@@ -620,7 +626,7 @@ export default function SettingsForm({
               </p>
             )}
           </CardContent>
-        </Card>
+        </Card> */}
 
         {/* Reading Length */}
         <Card>
@@ -640,9 +646,9 @@ export default function SettingsForm({
             <Slider
               value={[readingMinutes]}
               onValueChange={(value) => setReadingMinutes(value[0])}
-              min={5}
+              min={3}
               max={30}
-              step={5}
+              step={1}
               className="w-full"
             />
             <p className="text-sm text-muted-foreground">
@@ -937,6 +943,26 @@ export default function SettingsForm({
             >
               {isUpdatingPassword ? 'Updating...' : 'Update Password'}
             </Button>
+          </CardContent>
+        </Card>
+
+        {/* Logout */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Account</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Button
+              variant="destructive"
+              onClick={handleLogout}
+              className="w-full"
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              Log Out
+            </Button>
+            <p className="text-xs text-muted-foreground mt-2">
+              Sign out of your account
+            </p>
           </CardContent>
         </Card>
       </TabsContent>

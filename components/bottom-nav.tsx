@@ -8,6 +8,11 @@ import { cn } from '@/lib/utils';
 export function BottomNav() {
   const pathname = usePathname();
 
+  // Hide bottom nav on onboarding page
+  if (pathname === '/onboarding') {
+    return null;
+  }
+
   const items = [
     {
       href: '/today',
