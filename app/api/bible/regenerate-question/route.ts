@@ -64,7 +64,9 @@ ${feedbackContext}
 ${otherQuestionsContext}
 
 YOUR TASK:
-Generate ONE new question that is completely different from the previous one and addresses any feedback provided.
+Generate ONE new question that is completely different from the previous one and addresses any feedback provided. 
+Also craft ONE simple, age-appropriate application idea that helps this specific child live out the passage this week.
+The focus of the application is to put their faith into action so that they can learn and live the scripture that they've just read.
 
 REQUIREMENTS:
 
@@ -113,7 +115,8 @@ QUESTION TYPES TO CONSIDER:
 - **Connection**: "When have you felt..." "How is this like..."
 - **Creative twist**: Unexpected angles, playful scenarios, fun what-ifs
 
-Return ONLY the question text, nothing else.`;
+Return ONLY valid JSON in this exact shape:
+{"question": "New question text", "application": "Simple, age-appropriate action for this child"}`;
 
     const { text } = await generateText({
       model: openai('gpt-4o'),
@@ -121,11 +124,26 @@ Return ONLY the question text, nothing else.`;
       temperature: 1.0, // High creativity for variety
     });
 
-    const newQuestion = text.trim().replace(/^["']|["']$/g, ''); // Remove quotes if AI added them
+    let newQuestion = text.trim().replace(/^["']|["']$/g, ''); // Remove quotes if AI added them
+    let newApplication: string | undefined;
+
+    try {
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        newQuestion = (parsed.question as string)?.trim() || newQuestion;
+        newApplication = (parsed.application as string)?.trim();
+      }
+    } catch (parseError) {
+      console.warn('Falling back to plain text regeneration parsing:', parseError);
+    }
 
     console.log('Regenerated question:', newQuestion);
 
-    return NextResponse.json({ question: newQuestion });
+    return NextResponse.json({
+      question: newQuestion,
+      application: newApplication,
+    });
   } catch (error) {
     console.error('Question regeneration error:', error);
     return NextResponse.json(

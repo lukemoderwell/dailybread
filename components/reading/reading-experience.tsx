@@ -6,6 +6,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Check,
+  ChevronDown,
+  ChevronUp,
   ChevronLeft,
   ChevronRight,
   ThumbsUp,
@@ -14,6 +16,7 @@ import {
   MessageSquare,
   Loader2,
 } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 import { toast } from 'sonner';
 import { createSupabaseClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
@@ -53,6 +56,7 @@ interface Question {
   age: number;
   color: string;
   question: string;
+  application?: string;
 }
 
 interface ReadingExperienceProps {
@@ -85,6 +89,7 @@ export default function ReadingExperience({
   const [passage, setPassage] = useState('');
   const [reference, setReference] = useState('');
   const [questions, setQuestions] = useState<Question[]>([]);
+  const [discussionGuide, setDiscussionGuide] = useState<string>('');
   const [isLoadingQuestions, setIsLoadingQuestions] = useState(true);
   const [answeredQuestions, setAnsweredQuestions] = useState<Set<number>>(
     new Set()
@@ -99,6 +104,10 @@ export default function ReadingExperience({
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [isCompletingReading, setIsCompletingReading] = useState(false);
   const [activeTab, setActiveTab] = useState('scripture');
+  const [openApplications, setOpenApplications] = useState<Set<string>>(
+    new Set()
+  );
+  const [isDiscussionGuideOpen, setIsDiscussionGuideOpen] = useState(true);
 
   // Track passage metadata for sequential reading
   const [passageMetadata, setPassageMetadata] = useState<{
@@ -136,8 +145,10 @@ export default function ReadingExperience({
         setPassage('');
         setReference('');
         setQuestions([]);
+        setDiscussionGuide('');
         setPassageMetadata(null);
         setSessionSummary('');
+        setIsDiscussionGuideOpen(true);
 
         // If viewing a historical session, load that session's data
         if (currentSessionId !== null) {
@@ -155,6 +166,11 @@ export default function ReadingExperience({
           setPassage(sessionData.session.content.scripture_text);
           setReference(sessionData.session.content.reference);
           setQuestions(sessionData.session.content.questions || []);
+          // Handle both old array format and new string format for backward compatibility
+          const guide = sessionData.session.content.discussionGuide;
+          setDiscussionGuide(
+            Array.isArray(guide) ? guide.join('\n\n') : guide || ''
+          );
           setIsHistoricalView(true);
           setNavigationMeta(sessionData.navigation);
           setState('ready');
@@ -259,6 +275,11 @@ export default function ReadingExperience({
               if (questionsRes.ok) {
                 const questionsData = await questionsRes.json();
                 setQuestions(questionsData.questions);
+                // Handle both old array format and new string format for backward compatibility
+                const guide = questionsData.discussionGuide;
+                setDiscussionGuide(
+                  Array.isArray(guide) ? guide.join('\n\n') : guide || ''
+                );
               } else {
                 console.error('Failed to generate questions');
               }
@@ -300,6 +321,10 @@ export default function ReadingExperience({
     currentSessionId,
   ]);
 
+  useEffect(() => {
+    setOpenApplications(new Set());
+  }, [questions]);
+
   const toggleQuestion = (index: number) => {
     const newAnswered = new Set(answeredQuestions);
     if (newAnswered.has(index)) {
@@ -308,6 +333,18 @@ export default function ReadingExperience({
       newAnswered.add(index);
     }
     setAnsweredQuestions(newAnswered);
+  };
+
+  const toggleApplication = (id: string) => {
+    setOpenApplications((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
   };
 
   const handleQuestionFeedback = (question: Question, rating: 1 | -1) => {
@@ -371,13 +408,18 @@ export default function ReadingExperience({
 
       if (!response.ok) throw new Error('Failed to regenerate question');
 
-      const { question: newQuestion } = await response.json();
+      const { question: newQuestion, application: newApplication } =
+        await response.json();
 
       // Update the question in the questions array
       setQuestions(
         questions.map((q) =>
           q.familyMemberId === selectedQuestionForFeedback.familyMemberId
-            ? { ...q, question: newQuestion }
+            ? {
+                ...q,
+                question: newQuestion,
+                application: newApplication || q.application,
+              }
             : q
         )
       );
@@ -446,6 +488,7 @@ export default function ReadingExperience({
             scripture_text: passage,
             reference: reference,
             questions: questions,
+            discussionGuide: discussionGuide,
             ending_book: passageMetadata.endingBook,
             ending_chapter: passageMetadata.endingChapter,
             ending_verse: passageMetadata.endingVerse,
@@ -628,7 +671,7 @@ export default function ReadingExperience({
             Scripture
           </TabsTrigger>
           <TabsTrigger value="questions" className="text-base">
-            Questions
+            Discussion
           </TabsTrigger>
         </TabsList>
 
@@ -775,6 +818,16 @@ export default function ReadingExperience({
             {isLoadingQuestions ? (
               // Loading skeleton for questions
               <>
+                <Card className="border-0 md:border shadow-none md:shadow-sm">
+                  <CardContent className="pt-6 space-y-3">
+                    <div className="h-5 w-48 bg-muted animate-pulse rounded"></div>
+                    <div className="space-y-2">
+                      <div className="h-4 bg-muted animate-pulse rounded w-full"></div>
+                      <div className="h-4 bg-muted animate-pulse rounded w-11/12"></div>
+                      <div className="h-4 bg-muted animate-pulse rounded w-5/6"></div>
+                    </div>
+                  </CardContent>
+                </Card>
                 {familyMembers.map((member) => (
                   <Card key={member.id}>
                     <CardContent className="pt-6">
@@ -802,8 +855,65 @@ export default function ReadingExperience({
             ) : (
               // Actual questions
               <>
+                {discussionGuide.length > 0 && (
+                  <Card className="border-0 md:border shadow-none md:shadow-sm">
+                    <CardContent className="pt-6">
+                      <button
+                        onClick={() => setIsDiscussionGuideOpen(!isDiscussionGuideOpen)}
+                        className="w-full flex items-center justify-between gap-3 text-left hover:opacity-80 transition-opacity"
+                      >
+                        <div className="flex items-center gap-3 flex-1">
+                          <div className="p-2 rounded-full bg-primary/10 text-primary">
+                            <MessageSquare className="h-5 w-5" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-muted-foreground">
+                              Group discussion
+                            </p>
+                            <h3 className="text-xl font-semibold">
+                              Family discussion guide
+                            </h3>
+                          </div>
+                        </div>
+                        {isDiscussionGuideOpen ? (
+                          <ChevronUp className="h-5 w-5 text-muted-foreground shrink-0" />
+                        ) : (
+                          <ChevronDown className="h-5 w-5 text-muted-foreground shrink-0" />
+                        )}
+                      </button>
+                      {isDiscussionGuideOpen && (
+                        <div className="mt-4 text-base leading-relaxed">
+                          <ReactMarkdown
+                            components={{
+                              p: ({ children }) => (
+                                <p className="mb-3 last:mb-0 text-foreground">
+                                  {children}
+                                </p>
+                              ),
+                              strong: ({ children }) => (
+                                <strong className="font-semibold text-foreground">
+                                  {children}
+                                </strong>
+                              ),
+                              em: ({ children }) => (
+                                <em className="italic text-foreground">
+                                  {children}
+                                </em>
+                              ),
+                            }}
+                          >
+                            {discussionGuide}
+                          </ReactMarkdown>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
                 {questions.map((question, index) => {
                   const memberColor = getColorById(question.color);
+                  const isApplicationOpen = openApplications.has(
+                    question.familyMemberId
+                  );
                   return (
                     <Card
                       key={question.familyMemberId}
@@ -920,6 +1030,27 @@ export default function ReadingExperience({
                               >
                                 {question.question}
                               </p>
+                              <div className="mt-4 border-t pt-4">
+                                <button
+                                  onClick={() =>
+                                    toggleApplication(question.familyMemberId)
+                                  }
+                                  className="flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors"
+                                >
+                                  <span>Application idea</span>
+                                  <ChevronDown
+                                    className={`h-4 w-4 transition-transform ${
+                                      isApplicationOpen ? '-rotate-180' : ''
+                                    }`}
+                                  />
+                                </button>
+                                {isApplicationOpen && (
+                                  <p className="mt-3 text-base leading-relaxed text-muted-foreground">
+                                    {question.application ||
+                                      'Choose one simple way to live out this passage together this week.'}
+                                  </p>
+                                )}
+                              </div>
                             </div>
                           </div>
                         </div>

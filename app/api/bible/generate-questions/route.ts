@@ -22,6 +22,12 @@ interface QuestionRequest {
 interface GeneratedQuestion {
   name: string;
   question: string;
+  application: string;
+}
+
+interface GeneratedResponse {
+  discussionGuide: string;
+  questions: GeneratedQuestion[];
 }
 
 export async function POST(req: Request) {
@@ -54,7 +60,9 @@ FAMILY MEMBERS:
 - ${familyContext}
 
 YOUR TASK:
-Generate ONE unique question for each family member listed above. These questions should work together as a complementary set for a rich family discussion.
+1) Create a concise **discussion guide** written for the parent/leader facilitating the Bible study. This is NOT questions for the kids - focus on identifying the key themes, theological concepts, and spiritual principles in this passage. Write 1-2 brief paragraphs maximum (aim for brevity and impact). Use Markdown formatting: use **bold** to highlight key themes or concepts the leader should focus on, and *italic* for emphasis on important points. This should be quick to scan and help the leader understand what to watch for as they read together. Address the leader directly using "you". Be concise - every word should count.
+
+2) Generate ONE unique question **and** ONE practical, age-appropriate **application idea** for each family member listed above. These questions should work together as a complementary set for a rich family discussion.
 
 CRITICAL REQUIREMENTS:
 
@@ -128,6 +136,8 @@ CRITICAL REQUIREMENTS:
    - **Real-world bridge**: School, friends, family, current struggles
 
    Each question should explore a DIFFERENT dimension.
+
+   Applications should be actionable, simple to do THIS WEEK (or preferably the next day), and match the child's age.
 
 6. **CONVERSATION CATALYSTS** - Not Knowledge Tests:
 
@@ -212,17 +222,20 @@ QUALITY CHECKLIST - Before finalizing, verify each question:
 
 Remember: You're crafting moments of spiritual discovery that will shape these children's faith journey. Every question matters enormously.
 
-IMPORTANT: Return your response as a valid JSON array with this exact structure:
-[
-  {"name": "FirstChildName", "question": "Your creative question here?"},
-  {"name": "SecondChildName", "question": "Your creative question here?"}
-]
+IMPORTANT: Return your response as valid JSON with this exact structure:
+{
+  "discussionGuide": "A concise thematic discussion guide (1-2 paragraphs max) written for the parent/leader in Markdown format. Use **bold** for key themes/concepts and *italic* for emphasis. Focus on identifying the main themes and what to watch for - be brief and impactful. Write directly to the leader using 'you'.",
+  "questions": [
+    {"name": "FirstChildName", "question": "Your creative question here?", "application": "Simple, age-appropriate action for this child"},
+    {"name": "SecondChildName", "question": "Your creative question here?", "application": "Simple, age-appropriate action for this child"}
+  ]
+}
 
 Ensure questions are in the SAME ORDER as the family members list above.`;
 
     // Generate all questions in one batch call
     const { text } = await generateText({
-      model: openai('gpt-4o'),
+      model: openai('gpt-4.1-mini'),
       prompt,
       temperature: 0.9, // High creativity for variety
     });
@@ -230,31 +243,49 @@ Ensure questions are in the SAME ORDER as the family members list above.`;
     console.log('Raw AI response:', text);
 
     // Parse the JSON response
-    let generatedQuestions: GeneratedQuestion[];
+    let generated: GeneratedResponse | GeneratedQuestion[];
     try {
       // Try to extract JSON from the response (in case there's extra text)
       const jsonMatch = text.match(/\[[\s\S]*\]/);
-      if (!jsonMatch) {
-        throw new Error('No JSON array found in response');
+      const objectMatch = text.match(/\{[\s\S]*\}/);
+      const rawJson = objectMatch?.[0] || jsonMatch?.[0];
+
+      if (!rawJson) {
+        throw new Error('No JSON object or array found in response');
       }
-      generatedQuestions = JSON.parse(jsonMatch[0]);
+      generated = JSON.parse(rawJson);
     } catch (parseError) {
       console.error('Failed to parse AI response as JSON:', parseError);
       throw new Error('AI did not return valid JSON format');
     }
 
-    // Validate we got the right number of questions
-    if (generatedQuestions.length !== familyMembers.length) {
+    const responseQuestions = Array.isArray(generated)
+      ? generated
+      : generated.questions;
+
+    const discussionGuide =
+      !Array.isArray(generated) && typeof generated.discussionGuide === 'string'
+        ? generated.discussionGuide
+        : '';
+
+    if (
+      !responseQuestions ||
+      responseQuestions.length !== familyMembers.length
+    ) {
       console.error(
-        `Question count mismatch: got ${generatedQuestions.length}, expected ${familyMembers.length}`
+        `Question count mismatch: got ${
+          responseQuestions?.length || 0
+        }, expected ${familyMembers.length}`
       );
       throw new Error('AI did not generate the correct number of questions');
     }
 
     // Map generated questions back to family members with full metadata
     const questions = familyMembers.map((member) => {
-      const generated = generatedQuestions.find((q) => q.name === member.name);
-      if (!generated) {
+      const generatedQuestion = responseQuestions.find(
+        (q) => q.name === member.name
+      );
+      if (!generatedQuestion) {
         console.warn(`No question found for ${member.name}, using fallback`);
         return {
           familyMemberId: member.id,
@@ -262,6 +293,7 @@ Ensure questions are in the SAME ORDER as the family members list above.`;
           age: member.age,
           color: member.color,
           question: `What does this passage teach us about living wisely?`,
+          application: `Pick one simple way to live this out today and try it before bedtime.`,
         };
       }
 
@@ -270,7 +302,8 @@ Ensure questions are in the SAME ORDER as the family members list above.`;
         name: member.name,
         age: member.age,
         color: member.color,
-        question: generated.question,
+        question: generatedQuestion.question,
+        application: generatedQuestion.application,
       };
     });
 
@@ -288,7 +321,10 @@ Ensure questions are in the SAME ORDER as the family members list above.`;
 
     console.log('Generated questions:', questions);
 
-    return NextResponse.json({ questions });
+    return NextResponse.json({
+      discussionGuide,
+      questions,
+    });
   } catch (error) {
     console.error('Question generation error:', error);
     return NextResponse.json(
