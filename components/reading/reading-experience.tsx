@@ -236,7 +236,35 @@ export default function ReadingExperience({
         // We'll style these with CSS instead of converting to [1]
         const htmlContent = passageData.content;
 
+        // Set initial content
         setPassage(htmlContent);
+
+        // Highlight Jesus' words (only for Gospels and Acts)
+        const gospelsAndActs = ['Matthew', 'Mark', 'Luke', 'John', 'Acts'];
+        if (gospelsAndActs.includes(passageData.book)) {
+          // Call highlighting API asynchronously (non-blocking)
+          fetch('/api/bible/highlight-jesus-words', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              htmlContent: passageData.content,
+              reference: passageData.reference,
+              book: passageData.book,
+            }),
+          })
+            .then(async (highlightRes) => {
+              if (highlightRes.ok) {
+                const highlightData = await highlightRes.json();
+                if (highlightData.highlightedContent) {
+                  setPassage(highlightData.highlightedContent);
+                }
+              }
+            })
+            .catch((error) => {
+              console.error('Failed to highlight Jesus words:', error);
+              // Continue with original content
+            });
+        }
         setReference(passageData.reference);
 
         // Store passage metadata for completion tracking
@@ -744,6 +772,19 @@ export default function ReadingExperience({
                   .scripture-content :global(.add) {
                     font-style: italic;
                     opacity: 0.95;
+                  }
+
+                  /* Style Jesus' words - red letter edition */
+                  .scripture-content :global(.jesus-words) {
+                    color: hsl(0, 65%, 50%);
+                    font-weight: 500;
+                  }
+
+                  /* Dark mode adjustment for Jesus' words */
+                  @media (prefers-color-scheme: dark) {
+                    .scripture-content :global(.jesus-words) {
+                      color: hsl(0, 70%, 65%);
+                    }
                   }
 
                   /* Section headings (e.g., "Jesus Knows What People Are Like") */
