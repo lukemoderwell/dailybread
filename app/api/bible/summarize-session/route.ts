@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { openai } from '@ai-sdk/openai';
 import { generateText } from 'ai';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-
+import { AI_MODELS } from '@/lib/ai/config';
 export const runtime = 'edge';
 export const maxDuration = 10;
 
@@ -48,7 +48,7 @@ Remaining sentences: Briefly mention what each child was asked about (name + top
 Keep it very concise and conversational.`;
 
     const { text } = await generateText({
-      model: openai('gpt-4.1-nano'),
+      model: openai(AI_MODELS.QUICK),
       prompt,
       maxOutputTokens: 200,
     });

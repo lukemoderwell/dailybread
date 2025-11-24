@@ -3,7 +3,7 @@ import { experimental_generateImage as generateImage } from 'ai';
 import { openai } from '@ai-sdk/openai';
 import { generateText } from 'ai';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-
+import { AI_MODELS } from '@/lib/ai/config';
 export const runtime = 'edge';
 export const maxDuration = 30;
 
@@ -99,7 +99,7 @@ Return ONLY the JSON object, no additional text.`;
 
   try {
     const { text } = await generateText({
-      model: openai('gpt-4o-mini'),
+      model: openai(AI_MODELS.QUICK),
       prompt: analysisPrompt,
       temperature: 0,
     });
@@ -173,7 +173,9 @@ async function createPaintingHash(
   const encoder = new TextEncoder();
   const normalizedPassage = passage.replace(/\s+/g, ' ').trim();
   const sortedAges = [...ages].sort((a, b) => a - b).join(',');
-  const data = encoder.encode(`${reference}|${style}|${normalizedPassage}|${sortedAges}`);
+  const data = encoder.encode(
+    `${reference}|${style}|${normalizedPassage}|${sortedAges}`
+  );
   const cryptoObj = globalThis.crypto;
   if (!cryptoObj?.subtle) {
     throw new Error('Web Crypto API is not available in this environment');
@@ -226,8 +228,7 @@ export async function POST(req: Request) {
       reference,
       familyMemberAges,
       regenerate,
-    }: PaintingRequest =
-      await req.json();
+    }: PaintingRequest = await req.json();
 
     console.log('Painting generation request:', {
       reference,
@@ -259,7 +260,12 @@ export async function POST(req: Request) {
       reference
     );
 
-    const paintingHash = await createPaintingHash(reference, passage, finalStyle, familyMemberAges);
+    const paintingHash = await createPaintingHash(
+      reference,
+      passage,
+      finalStyle,
+      familyMemberAges
+    );
     const filePath = `${user.id}/${paintingHash}.png`;
     const {
       data: { publicUrl },
@@ -284,7 +290,10 @@ export async function POST(req: Request) {
       }
     }
 
-    console.log('Image prompt constructed:', imagePrompt.substring(0, 200) + '...');
+    console.log(
+      'Image prompt constructed:',
+      imagePrompt.substring(0, 200) + '...'
+    );
 
     // Step 3: Generate image using AI SDK
     const { image } = await generateImage({

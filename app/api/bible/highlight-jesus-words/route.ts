@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { openai } from '@ai-sdk/openai';
 import { generateText } from 'ai';
-
+import { AI_MODELS } from '@/lib/ai/config';
 export const runtime = 'edge';
 export const maxDuration = 30;
 
@@ -16,8 +16,11 @@ interface HighlightRequest {
  * with those words wrapped in spans with class "jesus-words"
  */
 export async function POST(req: Request) {
+  let htmlContent: string = '';
   try {
-    const { htmlContent, reference, book }: HighlightRequest = await req.json();
+    const request: HighlightRequest = await req.json();
+    htmlContent = request.htmlContent;
+    const { reference, book } = request;
 
     // Extract plain text for analysis (remove HTML tags)
     const plainText = htmlContent
@@ -59,7 +62,7 @@ IMPORTANT:
 - Include punctuation and capitalization exactly as shown`;
 
     const { text } = await generateText({
-      model: openai('gpt-4o-mini'),
+      model: openai(AI_MODELS.QUICK),
       prompt,
       temperature: 0.2, // Very low temperature for consistent extraction
     });
@@ -94,8 +97,11 @@ IMPORTANT:
 
     for (const quote of sortedQuotes) {
       // Remove HTML tags from the quote for matching
-      const quoteTextOnly = quote.replace(/[^\w\s.,;:!?'"()-]/g, ' ').replace(/\s+/g, ' ').trim();
-      
+      const quoteTextOnly = quote
+        .replace(/[^\w\s.,;:!?'"()-]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
       if (quoteTextOnly.length < 10) continue;
 
       // Find the quote in the HTML by matching the text content
@@ -110,7 +116,7 @@ IMPORTANT:
 
       // Use a more sophisticated replacement that preserves HTML structure
       const regex = new RegExp(`(${pattern})`, 'gi');
-      
+
       highlightedContent = highlightedContent.replace(regex, (match, p1) => {
         // Skip if already wrapped
         if (match.includes('jesus-words') || match.includes('class=')) {
@@ -136,4 +142,3 @@ IMPORTANT:
 function escapeRegex(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
-
