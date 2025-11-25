@@ -4,7 +4,9 @@ import BibleHeatmap from "@/components/bible-heatmap";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { ArrowLeft, BookOpen, Flame, Trophy } from "lucide-react";
+import { ArrowLeft, BookOpen, Flame, Trophy, Award } from "lucide-react";
+import { getUserAchievements } from "@/lib/achievements/achievement-service";
+import { AchievementsGrid } from "@/components/achievements/achievements-grid";
 
 async function getBookProgress(userId: string) {
   const supabase = await createSupabaseServerClient();
@@ -88,6 +90,9 @@ export default async function ProgressPage() {
     Object.values(bookProgress).reduce((acc, curr) => acc + curr, 0) / 66
   );
 
+  // Fetch achievements
+  const achievements = await getUserAchievements(user.id);
+
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-6xl mx-auto p-4 md:p-8 space-y-6">
@@ -147,6 +152,22 @@ export default async function ProgressPage() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Family Achievements */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
+            <div>
+              <CardTitle>Family Achievements</CardTitle>
+              <CardDescription>
+                Badges your family has earned together
+              </CardDescription>
+            </div>
+            <Award className="h-5 w-5 text-amber-500" />
+          </CardHeader>
+          <CardContent>
+            <AchievementsGrid achievements={achievements} showCategories />
+          </CardContent>
+        </Card>
 
         {/* Heatmap */}
         <Card>

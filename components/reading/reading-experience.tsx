@@ -40,6 +40,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { AchievementCelebration } from '@/components/achievements/achievement-celebration';
 // import BiblePainting from '@/components/bible-painting';
 
 interface FamilyMember {
@@ -142,6 +143,21 @@ export default function ReadingExperience({
     previousId: null,
     nextId: null,
   });
+
+  // Achievement celebration state
+  const [achievementNotifications, setAchievementNotifications] = useState<
+    {
+      notificationId: string;
+      achievement: {
+        id: string;
+        name: string;
+        description: string;
+        icon: string;
+        isMajor: boolean;
+      };
+    }[]
+  >([]);
+  const [pendingRefresh, setPendingRefresh] = useState(false);
 
   // Load session data (either current reading or historical session)
   useEffect(() => {
@@ -339,7 +355,12 @@ export default function ReadingExperience({
                   setDiscussionGuide(null);
                 }
               } else {
-                console.error('Failed to generate questions');
+                const errorData = await questionsRes.json().catch(() => ({}));
+                console.error('Failed to generate questions:', {
+                  status: questionsRes.status,
+                  error: errorData.error || errorData.message || 'Unknown error',
+                  details: errorData.details,
+                });
               }
             })
             .finally(() => {
@@ -617,6 +638,35 @@ export default function ReadingExperience({
           .eq('user_id', userId);
       }
 
+      // Check for new achievements
+      try {
+        const achievementRes = await fetch('/api/achievements', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({}),
+        });
+
+        if (achievementRes.ok) {
+          const { newAchievements } = await achievementRes.json();
+
+          if (newAchievements && newAchievements.length > 0) {
+            // Show achievements before refreshing
+            setAchievementNotifications(
+              newAchievements.map((a: { id: string; name: string; description: string; icon: string; isMajor: boolean }) => ({
+                notificationId: a.id, // Use achievement ID as notification ID for now
+                achievement: a,
+              }))
+            );
+            setPendingRefresh(true);
+            setIsCompletingReading(false);
+            return; // Don't refresh yet - wait for celebration to be dismissed
+          }
+        }
+      } catch (achievementError) {
+        console.error('Achievement check error:', achievementError);
+        // Continue even if achievement check fails
+      }
+
       toast.success('Great job! See you tomorrow!');
 
       // Refresh to get new reading (this unmounts the component and reloads from scratch)
@@ -625,6 +675,31 @@ export default function ReadingExperience({
       console.error('Complete reading error:', error);
       toast.error('Failed to save progress');
       setIsCompletingReading(false);
+    }
+  };
+
+  // Handle achievement dismissal
+  const handleAchievementDismiss = async (notificationId: string) => {
+    // Mark notification as seen
+    try {
+      await fetch('/api/achievements', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'markSeen', notificationId }),
+      });
+    } catch (error) {
+      console.error('Failed to mark notification as seen:', error);
+    }
+
+    // Remove from local state
+    setAchievementNotifications((prev) =>
+      prev.filter((n) => n.notificationId !== notificationId)
+    );
+
+    // If no more notifications and pending refresh, do the refresh
+    if (achievementNotifications.length <= 1 && pendingRefresh) {
+      toast.success('Great job! See you tomorrow!');
+      router.refresh();
     }
   };
 
@@ -1225,6 +1300,12 @@ export default function ReadingExperience({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Achievement Celebration */}
+      <AchievementCelebration
+        notifications={achievementNotifications}
+        onDismiss={handleAchievementDismiss}
+      />
     </div>
   );
 }

@@ -12,6 +12,7 @@ See [context/README.md](context/README.md) for detailed documentation.
 | Reading experience | [context/features/reading-experience.md](context/features/reading-experience.md) |
 | Discussion guide | [context/features/discussion-guide.md](context/features/discussion-guide.md) |
 | Family members | [context/features/family-members.md](context/features/family-members.md) |
+| Achievements | [context/features/achievements.md](context/features/achievements.md) |
 | API patterns | [context/patterns/api-routes.md](context/patterns/api-routes.md) |
 | Protected pages | [context/patterns/protected-pages.md](context/patterns/protected-pages.md) |
 | Database | [context/patterns/database.md](context/patterns/database.md) |

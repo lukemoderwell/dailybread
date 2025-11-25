@@ -117,7 +117,7 @@ IMPORTANT:
       // Use a more sophisticated replacement that preserves HTML structure
       const regex = new RegExp(`(${pattern})`, 'gi');
 
-      highlightedContent = highlightedContent.replace(regex, (match, p1) => {
+      highlightedContent = highlightedContent.replace(regex, (match) => {
         // Skip if already wrapped
         if (match.includes('jesus-words') || match.includes('class=')) {
           return match;

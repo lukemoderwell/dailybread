@@ -149,9 +149,7 @@ export interface Database {
         Row: {
           user_id: string;
           bible_translation: string;
-          tts_voice: string;
           daily_reading_minutes: number;
-          enable_tts: boolean;
           verses_per_session: number;
           enable_paintings: boolean;
           painting_style_preference: string;
@@ -161,9 +159,7 @@ export interface Database {
         Insert: {
           user_id: string;
           bible_translation?: string;
-          tts_voice?: string;
           daily_reading_minutes?: number;
-          enable_tts?: boolean;
           verses_per_session?: number;
           enable_paintings?: boolean;
           painting_style_preference?: string;
@@ -173,9 +169,7 @@ export interface Database {
         Update: {
           user_id?: string;
           bible_translation?: string;
-          tts_voice?: string;
           daily_reading_minutes?: number;
-          enable_tts?: boolean;
           verses_per_session?: number;
           enable_paintings?: boolean;
           painting_style_preference?: string;
@@ -244,6 +238,87 @@ export interface Database {
           date?: string;
           completed_at?: string;
           content?: Json;
+          created_at?: string;
+        };
+      };
+      achievement_definitions: {
+        Row: {
+          id: string;
+          category: string;
+          name: string;
+          description: string;
+          icon: string;
+          requirement_type: string;
+          requirement_value: number | null;
+          is_major: boolean;
+          sort_order: number;
+          created_at: string;
+        };
+        Insert: {
+          id: string;
+          category: string;
+          name: string;
+          description: string;
+          icon: string;
+          requirement_type: string;
+          requirement_value?: number | null;
+          is_major?: boolean;
+          sort_order?: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          category?: string;
+          name?: string;
+          description?: string;
+          icon?: string;
+          requirement_type?: string;
+          requirement_value?: number | null;
+          is_major?: boolean;
+          sort_order?: number;
+          created_at?: string;
+        };
+      };
+      family_achievements: {
+        Row: {
+          id: string;
+          user_id: string;
+          achievement_id: string;
+          unlocked_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          achievement_id: string;
+          unlocked_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          achievement_id?: string;
+          unlocked_at?: string;
+        };
+      };
+      achievement_notifications: {
+        Row: {
+          id: string;
+          user_id: string;
+          achievement_id: string;
+          seen: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          achievement_id: string;
+          seen?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          achievement_id?: string;
+          seen?: boolean;
           created_at?: string;
         };
       };

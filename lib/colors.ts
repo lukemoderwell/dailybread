@@ -66,3 +66,10 @@ export function getNextAvailableColor(usedColors: string[]) {
   const available = FAMILY_COLORS.filter((c) => !usedColors.includes(c.id));
   return available.length > 0 ? available[0] : getRandomColor();
 }
+
+export function getRandomAvailableColor(usedColors: string[]) {
+  const available = FAMILY_COLORS.filter((c) => !usedColors.includes(c.id));
+  if (available.length === 0) return getRandomColor();
+  // Randomly select from available colors
+  return available[Math.floor(Math.random() * available.length)];
+}

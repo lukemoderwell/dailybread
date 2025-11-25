@@ -6,16 +6,10 @@ import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import Link from 'next/link';
+import { Loader2, BookOpen, Mail, Lock, ArrowRight } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -81,84 +75,121 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>dailybread</CardTitle>
-          <CardDescription>
-            Sign in to continue your Bible reading journey
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Tabs defaultValue="password" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="password">Password</TabsTrigger>
-              <TabsTrigger value="magic">Magic Link</TabsTrigger>
-            </TabsList>
+    <>
+      <div className="flex flex-col space-y-2 text-center items-center">
+        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 lg:hidden">
+          <BookOpen className="h-6 w-6 text-primary" />
+        </div>
+        <h1 className="text-2xl font-bold tracking-tight">
+          Welcome back
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          Enter your credentials to return to the Word
+        </p>
+      </div>
+      <Tabs defaultValue="password" className="w-full">
+        <TabsList className="grid w-full grid-cols-2 mb-6">
+          <TabsTrigger value="password">Password</TabsTrigger>
+          <TabsTrigger value="magic">Magic Link</TabsTrigger>
+        </TabsList>
 
-            <TabsContent value="password">
-              <form onSubmit={handlePasswordSignIn} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="password-email">Email</Label>
-                  <Input
-                    id="password-email"
-                    type="email"
-                    placeholder="you@example.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    disabled={isLoading}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    disabled={isLoading}
-                  />
-                </div>
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? 'Signing in...' : 'Sign in'}
-                </Button>
-                <div className="text-center text-sm">
-                  <span className="text-muted-foreground">Don&apos;t have an account? </span>
-                  <Link href="/signup" className="text-primary hover:underline">
-                    Sign up
-                  </Link>
-                </div>
-              </form>
-            </TabsContent>
+        <TabsContent value="password">
+          <form onSubmit={handlePasswordSignIn} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="password-email">Email</Label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="password-email"
+                  type="email"
+                  placeholder="name@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="pl-9"
+                  required
+                  disabled={isLoading}
+                  autoCapitalize="none"
+                  autoComplete="email"
+                  autoCorrect="off"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password">Password</Label>
+                <Link 
+                  href="/forgot-password" 
+                  className="text-xs text-muted-foreground hover:text-primary hover:underline"
+                >
+                  Forgot password?
+                </Link>
+              </div>
+              <div className="relative">
+                <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="pl-9"
+                  required
+                  disabled={isLoading}
+                />
+              </div>
+            </div>
+            <Button type="submit" className="w-full group" disabled={isLoading}>
+              {isLoading && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              Sign In
+              {!isLoading && <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />}
+            </Button>
+          </form>
+        </TabsContent>
 
-            <TabsContent value="magic">
-              <form onSubmit={handleMagicLink} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="magic-email">Email</Label>
-                  <Input
-                    id="magic-email"
-                    type="email"
-                    placeholder="you@example.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    disabled={isLoading}
-                  />
-                </div>
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? 'Sending...' : 'Send magic link'}
-                </Button>
-                <p className="text-xs text-center text-muted-foreground">
-                  We&apos;ll email you a link to sign in instantly
-                </p>
-              </form>
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
-    </div>
+        <TabsContent value="magic">
+          <form onSubmit={handleMagicLink} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="magic-email">Email</Label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="magic-email"
+                  type="email"
+                  placeholder="name@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="pl-9"
+                  required
+                  disabled={isLoading}
+                  autoCapitalize="none"
+                  autoComplete="email"
+                  autoCorrect="off"
+                />
+              </div>
+            </div>
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              Send Magic Link
+            </Button>
+            <p className="px-8 text-center text-xs text-muted-foreground">
+              We&apos;ll email you a link to sign in instantly.
+            </p>
+          </form>
+        </TabsContent>
+      </Tabs>
+
+      <p className="px-8 text-center text-sm text-muted-foreground">
+        Don&apos;t have an account?{' '}
+        <Link 
+          href="/signup" 
+          className="font-medium underline underline-offset-4 hover:text-primary transition-colors"
+        >
+          Sign up
+        </Link>
+      </p>
+    </>
   );
 }
