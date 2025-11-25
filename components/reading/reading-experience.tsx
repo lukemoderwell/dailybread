@@ -16,7 +16,6 @@ import {
   MessageSquare,
   Loader2,
 } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
 import { toast } from 'sonner';
 import { createSupabaseClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
@@ -59,6 +58,13 @@ interface Question {
   application?: string;
 }
 
+interface DiscussionGuide {
+  bigIdea: string;
+  aboutGod: string;
+  aboutPeople: string;
+  starterQuestion: string;
+}
+
 interface ReadingExperienceProps {
   userId: string;
   familyMembers: FamilyMember[];
@@ -89,7 +95,7 @@ export default function ReadingExperience({
   const [passage, setPassage] = useState('');
   const [reference, setReference] = useState('');
   const [questions, setQuestions] = useState<Question[]>([]);
-  const [discussionGuide, setDiscussionGuide] = useState<string>('');
+  const [discussionGuide, setDiscussionGuide] = useState<DiscussionGuide | null>(null);
   const [isLoadingQuestions, setIsLoadingQuestions] = useState(true);
   const [answeredQuestions, setAnsweredQuestions] = useState<Set<number>>(
     new Set()
@@ -145,7 +151,7 @@ export default function ReadingExperience({
         setPassage('');
         setReference('');
         setQuestions([]);
-        setDiscussionGuide('');
+        setDiscussionGuide(null);
         setPassageMetadata(null);
         setSessionSummary('');
         setIsDiscussionGuideOpen(true);
@@ -166,11 +172,23 @@ export default function ReadingExperience({
           setPassage(sessionData.session.content.scripture_text);
           setReference(sessionData.session.content.reference);
           setQuestions(sessionData.session.content.questions || []);
-          // Handle both old array format and new string format for backward compatibility
+          // Handle backward compatibility: old formats (array or string) and new format (structured object)
           const guide = sessionData.session.content.discussionGuide;
-          setDiscussionGuide(
-            Array.isArray(guide) ? guide.join('\n\n') : guide || ''
-          );
+          if (guide && typeof guide === 'object' && !Array.isArray(guide)) {
+            // New structured format
+            setDiscussionGuide(guide);
+          } else if (guide) {
+            // Old format: convert to new structure with summary only
+            const summaryText = Array.isArray(guide) ? guide.join('\n\n') : guide;
+            setDiscussionGuide({
+              bigIdea: summaryText,
+              aboutGod: '',
+              aboutPeople: '',
+              starterQuestion: '',
+            });
+          } else {
+            setDiscussionGuide(null);
+          }
           setIsHistoricalView(true);
           setNavigationMeta(sessionData.navigation);
           setState('ready');
@@ -303,11 +321,23 @@ export default function ReadingExperience({
               if (questionsRes.ok) {
                 const questionsData = await questionsRes.json();
                 setQuestions(questionsData.questions);
-                // Handle both old array format and new string format for backward compatibility
+                // Handle structured discussion guide
                 const guide = questionsData.discussionGuide;
-                setDiscussionGuide(
-                  Array.isArray(guide) ? guide.join('\n\n') : guide || ''
-                );
+                if (guide && typeof guide === 'object' && !Array.isArray(guide)) {
+                  // New structured format
+                  setDiscussionGuide(guide);
+                } else if (guide) {
+                  // Old format: convert to new structure with summary only
+                  const summaryText = Array.isArray(guide) ? guide.join('\n\n') : guide;
+                  setDiscussionGuide({
+                    bigIdea: summaryText,
+                    aboutGod: '',
+                    aboutPeople: '',
+                    starterQuestion: '',
+                  });
+                } else {
+                  setDiscussionGuide(null);
+                }
               } else {
                 console.error('Failed to generate questions');
               }
@@ -641,15 +671,16 @@ export default function ReadingExperience({
       {/* Header with streak and navigation */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={navigateToPrevious}
-            disabled={!navigationMeta.hasPrevious}
-            className="h-8 w-8"
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </Button>
+          {navigationMeta.hasPrevious && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={navigateToPrevious}
+              className="h-8 w-8"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </Button>
+          )}
           <div>
             <h1 className="text-lg lg:text-2xl font-bold">
               {isHistoricalView ? 'Previous Reading' : "Today's Reading"}
@@ -896,7 +927,7 @@ export default function ReadingExperience({
             ) : (
               // Actual questions
               <>
-                {discussionGuide.length > 0 && (
+                {discussionGuide && (
                   <Card className="border-0 md:border shadow-none md:shadow-sm">
                     <CardContent className="pt-6">
                       <button
@@ -909,10 +940,10 @@ export default function ReadingExperience({
                           </div>
                           <div className="flex-1">
                             <p className="text-sm font-medium text-muted-foreground">
-                              Group discussion
+                              Family
                             </p>
                             <h3 className="text-xl font-semibold">
-                              Family discussion guide
+                              Discussion guide
                             </h3>
                           </div>
                         </div>
@@ -923,28 +954,52 @@ export default function ReadingExperience({
                         )}
                       </button>
                       {isDiscussionGuideOpen && (
-                        <div className="mt-4 text-base leading-relaxed">
-                          <ReactMarkdown
-                            components={{
-                              p: ({ children }) => (
-                                <p className="mb-3 last:mb-0 text-foreground">
-                                  {children}
-                                </p>
-                              ),
-                              strong: ({ children }) => (
-                                <strong className="font-semibold text-foreground">
-                                  {children}
-                                </strong>
-                              ),
-                              em: ({ children }) => (
-                                <em className="italic text-foreground">
-                                  {children}
-                                </em>
-                              ),
-                            }}
-                          >
-                            {discussionGuide}
-                          </ReactMarkdown>
+                        <div className="mt-6 space-y-5">
+                          {/* Big Idea */}
+                          {discussionGuide.bigIdea && (
+                            <div>
+                              <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                                The Big Idea
+                              </h4>
+                              <p className="text-lg leading-relaxed text-foreground font-medium">
+                                {discussionGuide.bigIdea}
+                              </p>
+                            </div>
+                          )}
+
+                          {/* About God & About People */}
+                          {(discussionGuide.aboutGod || discussionGuide.aboutPeople) && (
+                            <ul className="space-y-2">
+                              {discussionGuide.aboutGod && (
+                                <li className="flex gap-3 text-base leading-relaxed">
+                                  <span className="text-primary font-bold shrink-0">•</span>
+                                  <span className="text-foreground">
+                                    <span className="font-semibold">About God:</span> {discussionGuide.aboutGod}
+                                  </span>
+                                </li>
+                              )}
+                              {discussionGuide.aboutPeople && (
+                                <li className="flex gap-3 text-base leading-relaxed">
+                                  <span className="text-primary font-bold shrink-0">•</span>
+                                  <span className="text-foreground">
+                                    <span className="font-semibold">About People:</span> {discussionGuide.aboutPeople}
+                                  </span>
+                                </li>
+                              )}
+                            </ul>
+                          )}
+
+                          {/* Family Starter Question */}
+                          {discussionGuide.starterQuestion && (
+                            <div className="pt-4 border-t">
+                              <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                                Family Starter
+                              </h4>
+                              <p className="text-lg leading-relaxed text-foreground font-medium">
+                                {discussionGuide.starterQuestion}
+                              </p>
+                            </div>
+                          )}
                         </div>
                       )}
                     </CardContent>
