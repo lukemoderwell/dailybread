@@ -307,7 +307,7 @@ function MobileBibleSections({
               <details
                 key={sectionName}
                 className="group rounded-2xl border bg-card text-card-foreground shadow-sm transition"
-                {...(index === 0 ? { defaultOpen: true } : {})}
+                open={index === 0}
               >
                 <summary className="flex cursor-pointer items-center justify-between gap-3 px-4 py-3">
                   <div>

@@ -166,7 +166,12 @@ const QUALITY_CHECKLIST = `
 
 const OUTPUT_FORMAT = `
 {
-  "discussionGuide": "A concise thematic discussion guide (1-2 paragraphs max) written for the parent/leader in Markdown format. Use **bold** for key themes/concepts and *italic* for emphasis. Focus on identifying the main themes and what to watch for - be brief and impactful. Write directly to the leader using 'you'.",
+  "discussionGuide": {
+    "bigIdea": "One punchy, memorable statement capturing the core truth of this passage",
+    "aboutGod": "What this passage reveals about God's character, nature, or actions",
+    "aboutPeople": "What this passage reveals about humanity, our nature, or how we should respond",
+    "starterQuestion": "One thoughtful, engaging question that works for the whole family together"
+  },
   "questions": [
     {"name": "FirstChildName", "question": "Your creative question here?", "application": "Simple, age-appropriate action for this child"},
     {"name": "SecondChildName", "question": "Your creative question here?", "application": "Simple, age-appropriate action for this child"}
@@ -188,7 +193,15 @@ FAMILY MEMBERS:
 - ${context.familyContext}
 
 YOUR TASK:
-1) Create a concise **discussion guide** written for the parent/leader facilitating the Bible study. This is NOT questions for the kids - focus on identifying the key themes, theological concepts, and spiritual principles in this passage. Write 1-2 brief paragraphs maximum (aim for brevity and impact). Use Markdown formatting: use **bold** to highlight key themes or concepts the leader should focus on, and *italic* for emphasis. This should be quick to scan and help the leader understand what to watch for as they read together. Address the leader directly using "you". Be concise - every word should count.
+1) Create a structured **discussion guide** with this framework:
+
+   **Big Idea**: One punchy, memorable statement that captures the core truth of this passage. Make it stick. This is what you want the family to walk away remembering.
+
+   **About God**: What does this scripture tell us about God? His character, His nature, His actions, His heart. One clear, insightful sentence.
+
+   **About People**: What does this scripture tell us about people? Our nature, our need, how we should respond, what it means for us. One clear, insightful sentence.
+
+   **Family Starter Question**: ONE thoughtful discussion question that works for the entire family together. This should be engaging, open-ended, and serve as a great conversation starter before diving into individual questions. Make it accessible to all ages represented in the family.
 
 2) Generate ONE unique question **and** ONE practical, age-appropriate **application idea** for each family member listed above. These questions should work together as a complementary set for a rich family discussion.
 

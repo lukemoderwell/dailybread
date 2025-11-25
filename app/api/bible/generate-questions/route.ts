@@ -28,8 +28,15 @@ interface GeneratedQuestion {
   application: string;
 }
 
+interface DiscussionGuide {
+  bigIdea: string;
+  aboutGod: string;
+  aboutPeople: string;
+  starterQuestion: string;
+}
+
 interface GeneratedResponse {
-  discussionGuide: string;
+  discussionGuide: DiscussionGuide;
   questions: GeneratedQuestion[];
 }
 
@@ -75,9 +82,9 @@ export async function POST(req: Request) {
       : generated.questions;
 
     const discussionGuide =
-      !Array.isArray(generated) && typeof generated.discussionGuide === 'string'
+      !Array.isArray(generated) && generated.discussionGuide
         ? generated.discussionGuide
-        : '';
+        : null;
 
     // Validate question count
     if (
