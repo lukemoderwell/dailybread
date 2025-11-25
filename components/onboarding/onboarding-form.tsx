@@ -16,6 +16,7 @@ import {
   Clock,
   Users,
   Sparkles,
+  MessageCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -25,9 +26,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
-import { FAMILY_COLORS, getNextAvailableColor } from '@/lib/colors';
-import { BIBLE_TRANSLATIONS } from '@/lib/bible-translations';
+import {
+  FAMILY_COLORS,
+  getNextAvailableColor,
+  getRandomAvailableColor,
+  getColorById,
+} from '@/lib/colors';
 import { cn } from '@/lib/utils';
 
 interface FamilyMember {
@@ -67,7 +71,7 @@ const REMINDER_HOURS = Array.from({ length: 24 }, (_, i) => i);
 const getBookRecommendationReason = (book: string): string => {
   switch (book) {
     case 'Mark':
-      return 'It\'s the shortest gospel with action-packed stories that keep young kids engaged.';
+      return "It's the shortest gospel with action-packed stories that keep young kids engaged.";
     case 'John':
       return 'Beautiful stories about Jesus that are accessible and meaningful for kids.';
     case 'Proverbs':
@@ -92,13 +96,15 @@ export default function OnboardingForm({ userId }: OnboardingFormProps) {
       id: crypto.randomUUID(),
       name: '',
       age: '',
-      color: getNextAvailableColor([]).id,
+      color: getRandomAvailableColor([]).id,
       notes: '',
     },
   ]);
 
   // Step 3: Preferences
-  const [selectedTranslation, setSelectedTranslation] = useState('de4e12af7f28f599-02'); // KJV default
+  const [selectedTranslation, setSelectedTranslation] = useState(
+    '555fef9a6cb31151-01'
+  ); // CEV (Contemporary English Version) default
   const [readingMinutes, setReadingMinutes] = useState(10);
   const [reminderHour, setReminderHour] = useState(18); // 6 PM default
   const [hasAdjustedTime, setHasAdjustedTime] = useState(false);
@@ -136,17 +142,17 @@ export default function OnboardingForm({ userId }: OnboardingFormProps) {
       // Prefer Genesis for very young (creation, Noah, etc.) or Mark for action
       return 'Genesis'; // Classic stories kids love
     }
-    
+
     // Young kids (7-9): Gospels with beautiful stories
     if (oldest <= 9) {
       return 'John'; // Beautiful stories, accessible language
     }
-    
+
     // Medium-aged kids (10-12): Wisdom literature
     if (oldest <= 12) {
       return 'Proverbs'; // Practical wisdom, easy to understand
     }
-    
+
     // Older kids (13+): Can handle more complex books
     return 'James'; // Practical Christian living
   }, [familyMembers]);
@@ -168,7 +174,7 @@ export default function OnboardingForm({ userId }: OnboardingFormProps) {
 
   const addFamilyMember = () => {
     const usedColors = familyMembers.map((m) => m.color);
-    const nextColor = getNextAvailableColor(usedColors);
+    const nextColor = getRandomAvailableColor(usedColors);
 
     setFamilyMembers([
       ...familyMembers,
@@ -215,7 +221,10 @@ export default function OnboardingForm({ userId }: OnboardingFormProps) {
     return true; // Step 3 always valid
   };
 
-  const handleNext = () => {
+  const handleNext = (e?: React.MouseEvent) => {
+    e?.preventDefault();
+    e?.stopPropagation();
+
     if (canProceedToNextStep()) {
       if (currentStep < 3) {
         setCurrentStep(currentStep + 1);
@@ -227,7 +236,10 @@ export default function OnboardingForm({ userId }: OnboardingFormProps) {
     }
   };
 
-  const handlePrevious = () => {
+  const handlePrevious = (e?: React.MouseEvent) => {
+    e?.preventDefault();
+    e?.stopPropagation();
+
     if (currentStep > 1) {
       setCurrentStep(currentStep - 1);
     }
@@ -360,76 +372,73 @@ export default function OnboardingForm({ userId }: OnboardingFormProps) {
       </div>
 
       {/* Step Content */}
-      <Card className="min-h-[400px]">
-        <CardContent className="pt-6">
+      <Card
+        className="min-h-[400px] relative z-0"
+        style={{ pointerEvents: 'auto' }}
+      >
+        <CardContent
+          className="pt-6 relative z-0"
+          style={{ pointerEvents: 'auto' }}
+        >
           {/* Step 1: Welcome */}
           {currentStep === 1 && (
-            <div className="space-y-6 text-center">
+            <div className="space-y-8 text-center py-4">
               <div className="space-y-4">
-                <div className="w-20 h-20 mx-auto rounded-full bg-primary/10 flex items-center justify-center">
+                <div className="w-20 h-20 mx-auto rounded-full bg-primary/10 flex items-center justify-center animate-in zoom-in duration-500">
                   <BookOpen className="h-10 w-10 text-primary" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold mb-2">
+                  <h2 className="text-3xl font-bold tracking-tight mb-3 font-(family-name:--font-crimson)">
                     Welcome to dailybread
                   </h2>
-                  <p className="text-muted-foreground text-lg">
+                  <p className="text-muted-foreground text-lg max-w-sm mx-auto">
                     Family Bible study made simple & joyful
                   </p>
                 </div>
               </div>
 
-              <div className="space-y-4 text-left max-w-lg mx-auto">
-                <div className="space-y-2">
-                  <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-                      <span className="text-primary font-bold">1</span>
-                    </div>
-                    <div>
-                      <h3 className="font-semibold mb-1">Daily Readings</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Short Bible passages read aloud, perfect for 5-10 minute
-                        family devotions
-                      </p>
-                    </div>
+              <div className="space-y-6 text-left max-w-sm mx-auto">
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                    <BookOpen className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold mb-1">Daily Readings</h3>
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      Short Bible passages read aloud or available as text
+                    </p>
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-                      <span className="text-primary font-bold">2</span>
-                    </div>
-                    <div>
-                      <h3 className="font-semibold mb-1">
-                        Age-Appropriate Questions
-                      </h3>
-                      <p className="text-sm text-muted-foreground">
-                        Engaging questions tailored to each child&apos;s age and
-                        understanding
-                      </p>
-                    </div>
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                    <MessageCircle className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold mb-1">
+                      Age-Appropriate Questions
+                    </h3>
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      Engaging questions tailored to each child&apos;s age
+                    </p>
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-                      <span className="text-primary font-bold">3</span>
-                    </div>
-                    <div>
-                      <h3 className="font-semibold mb-1">Audio-First</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Everything read aloud so you can focus on your family,
-                        not your screen
-                      </p>
-                    </div>
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                    <Users className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold mb-1">Family Focused</h3>
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      Designed to help you lead your family in God&apos;s Word
+                    </p>
                   </div>
                 </div>
               </div>
 
-              <div className="pt-4 border-t">
-                <p className="text-sm text-muted-foreground">
+              <div className="pt-6 border-t">
+                <p className="text-sm font-medium text-primary">
                   Let&apos;s set up your family in just 2 minutes
                 </p>
               </div>
@@ -446,115 +455,137 @@ export default function OnboardingForm({ userId }: OnboardingFormProps) {
                 </p>
               </div>
 
-              <div className="space-y-4">
-                {familyMembers.map((member) => (
-                  <div
-                    key={member.id}
-                    className="rounded-lg border p-4 space-y-3 bg-muted/20"
-                  >
-                    <div className="flex gap-2 items-start">
-                      <div className="flex-1 space-y-2">
-                        <Label
-                          htmlFor={`name-${member.id}`}
-                          className="sr-only"
+              <div className="space-y-6">
+                {familyMembers.map((member, index) => (
+                  <div key={member.id} className="relative z-0">
+                    <div className="absolute -left-3 top-6 bottom-6 w-0.5 bg-border hidden sm:block" />
+                    <div
+                      className="relative z-10 rounded-2xl border p-5 shadow-sm animate-in fade-in slide-in-from-bottom-2 transition-all duration-300 group"
+                      style={{
+                        backgroundColor: `${
+                          getColorById(member.color).value
+                        }08`, // Very subtle tint
+                        borderColor: `${getColorById(member.color).value}30`,
+                      }}
+                    >
+                      {/* Avatar and Info Header */}
+                      <div className="flex items-start gap-4 mb-4">
+                        <div
+                          className="h-12 w-12 rounded-full flex items-center justify-center text-2xl shadow-sm ring-2 ring-background shrink-0 transition-transform group-hover:scale-105"
+                          style={{
+                            backgroundColor: getColorById(member.color).value,
+                          }}
                         >
-                          Name
-                        </Label>
-                        <Input
-                          id={`name-${member.id}`}
-                          placeholder="Name"
-                          value={member.name}
-                          onChange={(e) =>
-                            updateFamilyMember(
-                              member.id,
-                              'name',
-                              e.target.value
-                            )
-                          }
-                          className="h-12"
-                        />
-                        <Label htmlFor={`age-${member.id}`} className="sr-only">
-                          Age
-                        </Label>
-                        <Input
-                          id={`age-${member.id}`}
-                          type="number"
-                          placeholder="Age"
-                          min="1"
-                          max="120"
-                          value={member.age}
-                          onChange={(e) =>
-                            updateFamilyMember(member.id, 'age', e.target.value)
-                          }
-                          className="h-12"
-                        />
-                      </div>
-                      {familyMembers.length > 1 && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon"
-                          className="h-10 w-10 mt-1"
-                          onClick={() => removeFamilyMember(member.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
+                          <span className="text-white/90 font-bold text-lg font-sans select-none">
+                            {member.name
+                              ? member.name.charAt(0).toUpperCase()
+                              : '?'}
+                          </span>
+                        </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div className="space-y-1">
-                        <Label className="text-sm">Color</Label>
-                        <Select
-                          value={member.color}
-                          onValueChange={(value) =>
-                            updateFamilyMember(member.id, 'color', value)
-                          }
-                        >
-                          <SelectTrigger className="h-11">
-                            <SelectValue placeholder="Choose a color" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {FAMILY_COLORS.map((color) => (
-                              <SelectItem key={color.id} value={color.id}>
-                                <span className="inline-flex items-center gap-2">
-                                  <span
-                                    className="h-3 w-3 rounded-full"
-                                    style={{ backgroundColor: color.value }}
-                                  />
-                                  {color.name}
-                                </span>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <div className="flex-1 pt-1">
+                          <h3 className="font-semibold text-lg leading-none mb-1">
+                            {member.name || `Child ${index + 1}`}
+                          </h3>
+                          <p className="text-sm text-muted-foreground">
+                            {member.age
+                              ? `${member.age} years old`
+                              : 'Age not set'}
+                          </p>
+                        </div>
+
+                        {familyMembers.length > 1 && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 -mr-2 -mt-2 text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10 rounded-full"
+                            onClick={() => removeFamilyMember(member.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
                       </div>
 
-                      <div className="space-y-1">
-                        <Label className="text-sm">Notes (optional)</Label>
-                        <Textarea
-                          placeholder="Interests, energy level..."
-                          value={member.notes}
-                          onChange={(e) =>
-                            updateFamilyMember(
-                              member.id,
-                              'notes',
-                              e.target.value
-                            )
-                          }
-                          className="min-h-[72px]"
-                        />
+                      {/* Fields Grid */}
+                      <div className="grid grid-cols-1 sm:grid-cols-[1fr,120px] gap-4">
+                        <div className="space-y-1.5">
+                          <Label
+                            htmlFor={`name-${member.id}`}
+                            className="text-xs font-medium text-muted-foreground ml-1 uppercase tracking-wider"
+                          >
+                            Name
+                          </Label>
+                          <Input
+                            id={`name-${member.id}`}
+                            type="text"
+                            inputMode="text"
+                            autoComplete="name"
+                            placeholder="e.g. Noah"
+                            value={member.name}
+                            onChange={(e) =>
+                              updateFamilyMember(
+                                member.id,
+                                'name',
+                                e.target.value
+                              )
+                            }
+                            className="h-12 text-base touch-manipulation bg-background/50 focus:bg-background transition-colors border-muted-foreground/20 focus:border-primary"
+                            style={{
+                              WebkitAppearance: 'none',
+                              pointerEvents: 'auto',
+                              zIndex: 1,
+                            }}
+                            autoFocus={
+                              index === familyMembers.length - 1 && !member.name
+                            }
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label
+                            htmlFor={`age-${member.id}`}
+                            className="text-xs font-medium text-muted-foreground ml-1 uppercase tracking-wider"
+                          >
+                            Age
+                          </Label>
+                          <Input
+                            id={`age-${member.id}`}
+                            type="number"
+                            inputMode="numeric"
+                            autoComplete="off"
+                            placeholder="0"
+                            min="1"
+                            max="120"
+                            value={member.age}
+                            onChange={(e) =>
+                              updateFamilyMember(
+                                member.id,
+                                'age',
+                                e.target.value
+                              )
+                            }
+                            className="h-12 text-base touch-manipulation bg-background/50 focus:bg-background transition-colors border-muted-foreground/20 focus:border-primary"
+                            style={{
+                              WebkitAppearance: 'none',
+                              pointerEvents: 'auto',
+                              zIndex: 1,
+                            }}
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>
                 ))}
+
                 <Button
                   type="button"
                   variant="outline"
                   onClick={addFamilyMember}
-                  className="w-full h-12"
+                  className="w-full h-14 border-dashed border-2 hover:border-primary/50 hover:bg-primary/5 text-muted-foreground hover:text-primary transition-all rounded-xl group"
                 >
-                  <Plus className="h-4 w-4 mr-2" />
+                  <div className="h-8 w-8 rounded-full bg-muted group-hover:bg-primary/20 flex items-center justify-center mr-3 transition-colors">
+                    <Plus className="h-5 w-5" />
+                  </div>
                   Add Another Family Member
                 </Button>
               </div>
@@ -599,31 +630,6 @@ export default function OnboardingForm({ userId }: OnboardingFormProps) {
                 </div>
               </div>
 
-              {/* Bible Translation */}
-              <div className="space-y-3">
-                <Label className="text-base font-semibold">
-                  Bible Translation
-                </Label>
-                <p className="text-sm text-muted-foreground">
-                  Choose your preferred Bible translation
-                </p>
-                <Select
-                  value={selectedTranslation}
-                  onValueChange={setSelectedTranslation}
-                >
-                  <SelectTrigger className="h-12">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {BIBLE_TRANSLATIONS.map((trans) => (
-                      <SelectItem key={trans.id} value={trans.id}>
-                        {trans.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
               {/* Starting Book */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
@@ -638,8 +644,9 @@ export default function OnboardingForm({ userId }: OnboardingFormProps) {
                 </div>
                 {selectedBook === recommendedBook && !hasChangedBook && (
                   <p className="text-sm text-muted-foreground">
-                    We recommend <strong>{recommendedBook}</strong> based on your
-                    family&apos;s ages. {getBookRecommendationReason(recommendedBook)}
+                    We recommend <strong>{recommendedBook}</strong> based on
+                    your family&apos;s ages.{' '}
+                    {getBookRecommendationReason(recommendedBook)}
                   </p>
                 )}
                 <div className="grid grid-cols-2 gap-2">
@@ -711,11 +718,15 @@ export default function OnboardingForm({ userId }: OnboardingFormProps) {
       </Card>
 
       {/* Navigation Buttons */}
-      <div className="flex items-center justify-between mt-6">
+      <div className="flex items-center justify-between mt-6 relative z-10">
         <Button
           type="button"
           variant="outline"
-          onClick={handlePrevious}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            handlePrevious(e);
+          }}
           disabled={currentStep === 1 || loading}
           className="min-w-[100px]"
         >
@@ -725,7 +736,11 @@ export default function OnboardingForm({ userId }: OnboardingFormProps) {
 
         <Button
           type="button"
-          onClick={handleNext}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            handleNext(e);
+          }}
           disabled={loading}
           className="min-w-[100px]"
         >
