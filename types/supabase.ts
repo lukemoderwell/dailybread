@@ -247,6 +247,87 @@ export interface Database {
           created_at?: string;
         };
       };
+      achievement_definitions: {
+        Row: {
+          id: string;
+          category: string;
+          name: string;
+          description: string;
+          icon: string;
+          requirement_type: string;
+          requirement_value: number | null;
+          is_major: boolean;
+          sort_order: number;
+          created_at: string;
+        };
+        Insert: {
+          id: string;
+          category: string;
+          name: string;
+          description: string;
+          icon: string;
+          requirement_type: string;
+          requirement_value?: number | null;
+          is_major?: boolean;
+          sort_order?: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          category?: string;
+          name?: string;
+          description?: string;
+          icon?: string;
+          requirement_type?: string;
+          requirement_value?: number | null;
+          is_major?: boolean;
+          sort_order?: number;
+          created_at?: string;
+        };
+      };
+      family_achievements: {
+        Row: {
+          id: string;
+          user_id: string;
+          achievement_id: string;
+          unlocked_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          achievement_id: string;
+          unlocked_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          achievement_id?: string;
+          unlocked_at?: string;
+        };
+      };
+      achievement_notifications: {
+        Row: {
+          id: string;
+          user_id: string;
+          achievement_id: string;
+          seen: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          achievement_id: string;
+          seen?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          achievement_id?: string;
+          seen?: boolean;
+          created_at?: string;
+        };
+      };
     };
   };
 }
