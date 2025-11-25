@@ -149,9 +149,7 @@ export interface Database {
         Row: {
           user_id: string;
           bible_translation: string;
-          tts_voice: string;
           daily_reading_minutes: number;
-          enable_tts: boolean;
           verses_per_session: number;
           enable_paintings: boolean;
           painting_style_preference: string;
@@ -161,9 +159,7 @@ export interface Database {
         Insert: {
           user_id: string;
           bible_translation?: string;
-          tts_voice?: string;
           daily_reading_minutes?: number;
-          enable_tts?: boolean;
           verses_per_session?: number;
           enable_paintings?: boolean;
           painting_style_preference?: string;
@@ -173,9 +169,7 @@ export interface Database {
         Update: {
           user_id?: string;
           bible_translation?: string;
-          tts_voice?: string;
           daily_reading_minutes?: number;
-          enable_tts?: boolean;
           verses_per_session?: number;
           enable_paintings?: boolean;
           painting_style_preference?: string;
