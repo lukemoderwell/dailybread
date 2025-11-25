@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -32,69 +32,58 @@ export function AchievementCelebration({
   notifications,
   onDismiss,
 }: AchievementCelebrationProps) {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [isOpen, setIsOpen] = useState(false);
+  // Track which notifications we've shown toasts for
+  const toastedRef = useRef<Set<string>>(new Set());
 
-  // Process notifications - show modal for major, toast for minor
+  // Show toasts for minor achievements (fire-and-forget, no state)
   useEffect(() => {
-    if (notifications.length === 0) return;
-
-    const current = notifications[currentIndex];
-    if (!current) return;
-
-    if (current.achievement.isMajor) {
-      // Show modal for major achievements
-      setIsOpen(true);
-    } else {
-      // Show toast for minor achievements
-      toast.success(current.achievement.name, {
-        description: current.achievement.description,
-        duration: 4000,
-      });
-      // Mark as seen and move to next
-      onDismiss(current.notificationId);
-      if (currentIndex < notifications.length - 1) {
-        setCurrentIndex((i) => i + 1);
+    notifications.forEach((notification) => {
+      if (
+        !notification.achievement.isMajor &&
+        !toastedRef.current.has(notification.notificationId)
+      ) {
+        toastedRef.current.add(notification.notificationId);
+        toast.success(notification.achievement.name, {
+          description: notification.achievement.description,
+          duration: 4000,
+        });
+        // Immediately dismiss minor achievements
+        onDismiss(notification.notificationId);
       }
-    }
-  }, [notifications, currentIndex, onDismiss]);
+    });
+  }, [notifications, onDismiss]);
+
+  // Find first major achievement to show
+  const currentMajor = notifications.find((n) => n.achievement.isMajor);
 
   const handleDismiss = () => {
-    const current = notifications[currentIndex];
-    if (current) {
-      onDismiss(current.notificationId);
-    }
-    setIsOpen(false);
-
-    // Move to next notification after a brief delay
-    if (currentIndex < notifications.length - 1) {
-      setTimeout(() => {
-        setCurrentIndex((i) => i + 1);
-      }, 300);
+    if (currentMajor) {
+      onDismiss(currentMajor.notificationId);
     }
   };
 
-  const current = notifications[currentIndex];
-  if (!current || !current.achievement.isMajor) return null;
+  if (!currentMajor) return null;
+
+  const majorCount = notifications.filter((n) => n.achievement.isMajor).length;
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && handleDismiss()}>
+    <Dialog open={true} onOpenChange={(open) => !open && handleDismiss()}>
       <DialogContent className="sm:max-w-md text-center">
         <DialogHeader className="items-center">
           <div className="mb-4 animate-in zoom-in-50 duration-500">
             <AchievementBadge
-              icon={current.achievement.icon}
-              name={current.achievement.name}
-              description={current.achievement.description}
+              icon={currentMajor.achievement.icon}
+              name={currentMajor.achievement.name}
+              description={currentMajor.achievement.description}
               unlocked={true}
               size="lg"
             />
           </div>
           <DialogTitle className="text-xl">
-            {current.achievement.name}
+            {currentMajor.achievement.name}
           </DialogTitle>
           <DialogDescription className="text-base">
-            {current.achievement.description}
+            {currentMajor.achievement.description}
           </DialogDescription>
         </DialogHeader>
 
@@ -104,9 +93,9 @@ export function AchievementCelebration({
           </Button>
         </div>
 
-        {notifications.length > 1 && (
+        {majorCount > 1 && (
           <p className="text-xs text-muted-foreground mt-2">
-            {currentIndex + 1} of {notifications.length} achievements
+            1 of {majorCount} achievements
           </p>
         )}
       </DialogContent>

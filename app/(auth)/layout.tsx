@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { BookOpen } from 'lucide-react';
 
 export default function AuthLayout({

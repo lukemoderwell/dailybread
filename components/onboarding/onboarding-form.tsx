@@ -26,12 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  FAMILY_COLORS,
-  getNextAvailableColor,
-  getRandomAvailableColor,
-  getColorById,
-} from '@/lib/colors';
+import { getRandomAvailableColor, getColorById } from '@/lib/colors';
 import { cn } from '@/lib/utils';
 
 interface FamilyMember {
@@ -102,7 +97,7 @@ export default function OnboardingForm({ userId }: OnboardingFormProps) {
   ]);
 
   // Step 3: Preferences
-  const [selectedTranslation, setSelectedTranslation] = useState(
+  const [selectedTranslation] = useState(
     '555fef9a6cb31151-01'
   ); // CEV (Contemporary English Version) default
   const [readingMinutes, setReadingMinutes] = useState(10);
