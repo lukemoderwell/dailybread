@@ -59,7 +59,7 @@ export async function POST(req: Request) {
       book,
       chapter,
       verse = 1,
-      translation = "de4e12af7f28f599-02",
+      translation = "555fef9a6cb31151-01", // CEV (Contemporary English Version)
       verses_per_session
     }: BiblePassageRequest = await req.json();
 
