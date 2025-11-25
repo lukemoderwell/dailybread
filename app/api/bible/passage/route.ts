@@ -40,8 +40,15 @@ async function fetchPassageSegment(
   }
 
   const data = await response.json();
+  let content = data.data.content;
+  
+  // Optionally highlight Jesus' words (only for Gospels and Acts)
+  const gospelsAndActs = ['Matthew', 'Mark', 'Luke', 'John', 'Acts'];
+  // We'll process this client-side to avoid adding latency to the main request
+  // The highlighting can be done asynchronously after the content loads
+  
   return {
-    content: data.data.content,
+    content,
     reference: data.data.reference,
   };
 }

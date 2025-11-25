@@ -6,6 +6,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Check,
+  ChevronDown,
+  ChevronUp,
   ChevronLeft,
   ChevronRight,
   ThumbsUp,
@@ -53,6 +55,14 @@ interface Question {
   age: number;
   color: string;
   question: string;
+  application?: string;
+}
+
+interface DiscussionGuide {
+  bigIdea: string;
+  aboutGod: string;
+  aboutPeople: string;
+  starterQuestion: string;
 }
 
 interface ReadingExperienceProps {
@@ -85,6 +95,7 @@ export default function ReadingExperience({
   const [passage, setPassage] = useState('');
   const [reference, setReference] = useState('');
   const [questions, setQuestions] = useState<Question[]>([]);
+  const [discussionGuide, setDiscussionGuide] = useState<DiscussionGuide | null>(null);
   const [isLoadingQuestions, setIsLoadingQuestions] = useState(true);
   const [answeredQuestions, setAnsweredQuestions] = useState<Set<number>>(
     new Set()
@@ -99,6 +110,10 @@ export default function ReadingExperience({
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [isCompletingReading, setIsCompletingReading] = useState(false);
   const [activeTab, setActiveTab] = useState('scripture');
+  const [openApplications, setOpenApplications] = useState<Set<string>>(
+    new Set()
+  );
+  const [isDiscussionGuideOpen, setIsDiscussionGuideOpen] = useState(true);
 
   // Track passage metadata for sequential reading
   const [passageMetadata, setPassageMetadata] = useState<{
@@ -136,8 +151,10 @@ export default function ReadingExperience({
         setPassage('');
         setReference('');
         setQuestions([]);
+        setDiscussionGuide(null);
         setPassageMetadata(null);
         setSessionSummary('');
+        setIsDiscussionGuideOpen(true);
 
         // If viewing a historical session, load that session's data
         if (currentSessionId !== null) {
@@ -155,6 +172,23 @@ export default function ReadingExperience({
           setPassage(sessionData.session.content.scripture_text);
           setReference(sessionData.session.content.reference);
           setQuestions(sessionData.session.content.questions || []);
+          // Handle backward compatibility: old formats (array or string) and new format (structured object)
+          const guide = sessionData.session.content.discussionGuide;
+          if (guide && typeof guide === 'object' && !Array.isArray(guide)) {
+            // New structured format
+            setDiscussionGuide(guide);
+          } else if (guide) {
+            // Old format: convert to new structure with summary only
+            const summaryText = Array.isArray(guide) ? guide.join('\n\n') : guide;
+            setDiscussionGuide({
+              bigIdea: summaryText,
+              aboutGod: '',
+              aboutPeople: '',
+              starterQuestion: '',
+            });
+          } else {
+            setDiscussionGuide(null);
+          }
           setIsHistoricalView(true);
           setNavigationMeta(sessionData.navigation);
           setState('ready');
@@ -220,7 +254,35 @@ export default function ReadingExperience({
         // We'll style these with CSS instead of converting to [1]
         const htmlContent = passageData.content;
 
+        // Set initial content
         setPassage(htmlContent);
+
+        // Highlight Jesus' words (only for Gospels and Acts)
+        const gospelsAndActs = ['Matthew', 'Mark', 'Luke', 'John', 'Acts'];
+        if (gospelsAndActs.includes(passageData.book)) {
+          // Call highlighting API asynchronously (non-blocking)
+          fetch('/api/bible/highlight-jesus-words', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              htmlContent: passageData.content,
+              reference: passageData.reference,
+              book: passageData.book,
+            }),
+          })
+            .then(async (highlightRes) => {
+              if (highlightRes.ok) {
+                const highlightData = await highlightRes.json();
+                if (highlightData.highlightedContent) {
+                  setPassage(highlightData.highlightedContent);
+                }
+              }
+            })
+            .catch((error) => {
+              console.error('Failed to highlight Jesus words:', error);
+              // Continue with original content
+            });
+        }
         setReference(passageData.reference);
 
         // Store passage metadata for completion tracking
@@ -259,6 +321,23 @@ export default function ReadingExperience({
               if (questionsRes.ok) {
                 const questionsData = await questionsRes.json();
                 setQuestions(questionsData.questions);
+                // Handle structured discussion guide
+                const guide = questionsData.discussionGuide;
+                if (guide && typeof guide === 'object' && !Array.isArray(guide)) {
+                  // New structured format
+                  setDiscussionGuide(guide);
+                } else if (guide) {
+                  // Old format: convert to new structure with summary only
+                  const summaryText = Array.isArray(guide) ? guide.join('\n\n') : guide;
+                  setDiscussionGuide({
+                    bigIdea: summaryText,
+                    aboutGod: '',
+                    aboutPeople: '',
+                    starterQuestion: '',
+                  });
+                } else {
+                  setDiscussionGuide(null);
+                }
               } else {
                 console.error('Failed to generate questions');
               }
@@ -300,6 +379,10 @@ export default function ReadingExperience({
     currentSessionId,
   ]);
 
+  useEffect(() => {
+    setOpenApplications(new Set());
+  }, [questions]);
+
   const toggleQuestion = (index: number) => {
     const newAnswered = new Set(answeredQuestions);
     if (newAnswered.has(index)) {
@@ -308,6 +391,18 @@ export default function ReadingExperience({
       newAnswered.add(index);
     }
     setAnsweredQuestions(newAnswered);
+  };
+
+  const toggleApplication = (id: string) => {
+    setOpenApplications((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
   };
 
   const handleQuestionFeedback = (question: Question, rating: 1 | -1) => {
@@ -371,13 +466,18 @@ export default function ReadingExperience({
 
       if (!response.ok) throw new Error('Failed to regenerate question');
 
-      const { question: newQuestion } = await response.json();
+      const { question: newQuestion, application: newApplication } =
+        await response.json();
 
       // Update the question in the questions array
       setQuestions(
         questions.map((q) =>
           q.familyMemberId === selectedQuestionForFeedback.familyMemberId
-            ? { ...q, question: newQuestion }
+            ? {
+                ...q,
+                question: newQuestion,
+                application: newApplication || q.application,
+              }
             : q
         )
       );
@@ -446,6 +546,7 @@ export default function ReadingExperience({
             scripture_text: passage,
             reference: reference,
             questions: questions,
+            discussionGuide: discussionGuide,
             ending_book: passageMetadata.endingBook,
             ending_chapter: passageMetadata.endingChapter,
             ending_verse: passageMetadata.endingVerse,
@@ -570,15 +671,16 @@ export default function ReadingExperience({
       {/* Header with streak and navigation */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={navigateToPrevious}
-            disabled={!navigationMeta.hasPrevious}
-            className="h-8 w-8"
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </Button>
+          {navigationMeta.hasPrevious && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={navigateToPrevious}
+              className="h-8 w-8"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </Button>
+          )}
           <div>
             <h1 className="text-lg lg:text-2xl font-bold">
               {isHistoricalView ? 'Previous Reading' : "Today's Reading"}
@@ -628,7 +730,7 @@ export default function ReadingExperience({
             Scripture
           </TabsTrigger>
           <TabsTrigger value="questions" className="text-base">
-            Questions
+            Discussion
           </TabsTrigger>
         </TabsList>
 
@@ -703,6 +805,19 @@ export default function ReadingExperience({
                     opacity: 0.95;
                   }
 
+                  /* Style Jesus' words - red letter edition */
+                  .scripture-content :global(.jesus-words) {
+                    color: hsl(0, 65%, 50%);
+                    font-weight: 500;
+                  }
+
+                  /* Dark mode adjustment for Jesus' words */
+                  @media (prefers-color-scheme: dark) {
+                    .scripture-content :global(.jesus-words) {
+                      color: hsl(0, 70%, 65%);
+                    }
+                  }
+
                   /* Section headings (e.g., "Jesus Knows What People Are Like") */
                   .scripture-content :global(.s),
                   .scripture-content :global(.s1) {
@@ -775,6 +890,16 @@ export default function ReadingExperience({
             {isLoadingQuestions ? (
               // Loading skeleton for questions
               <>
+                <Card className="border-0 md:border shadow-none md:shadow-sm">
+                  <CardContent className="pt-6 space-y-3">
+                    <div className="h-5 w-48 bg-muted animate-pulse rounded"></div>
+                    <div className="space-y-2">
+                      <div className="h-4 bg-muted animate-pulse rounded w-full"></div>
+                      <div className="h-4 bg-muted animate-pulse rounded w-11/12"></div>
+                      <div className="h-4 bg-muted animate-pulse rounded w-5/6"></div>
+                    </div>
+                  </CardContent>
+                </Card>
                 {familyMembers.map((member) => (
                   <Card key={member.id}>
                     <CardContent className="pt-6">
@@ -802,8 +927,89 @@ export default function ReadingExperience({
             ) : (
               // Actual questions
               <>
+                {discussionGuide && (
+                  <Card className="border-0 md:border shadow-none md:shadow-sm">
+                    <CardContent className="pt-6">
+                      <button
+                        onClick={() => setIsDiscussionGuideOpen(!isDiscussionGuideOpen)}
+                        className="w-full flex items-center justify-between gap-3 text-left hover:opacity-80 transition-opacity"
+                      >
+                        <div className="flex items-center gap-3 flex-1">
+                          <div className="p-2 rounded-full bg-primary/10 text-primary">
+                            <MessageSquare className="h-5 w-5" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-muted-foreground">
+                              Family
+                            </p>
+                            <h3 className="text-xl font-semibold">
+                              Discussion guide
+                            </h3>
+                          </div>
+                        </div>
+                        {isDiscussionGuideOpen ? (
+                          <ChevronUp className="h-5 w-5 text-muted-foreground shrink-0" />
+                        ) : (
+                          <ChevronDown className="h-5 w-5 text-muted-foreground shrink-0" />
+                        )}
+                      </button>
+                      {isDiscussionGuideOpen && (
+                        <div className="mt-6 space-y-5">
+                          {/* Big Idea */}
+                          {discussionGuide.bigIdea && (
+                            <div>
+                              <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                                The Big Idea
+                              </h4>
+                              <p className="text-lg leading-relaxed text-foreground font-medium">
+                                {discussionGuide.bigIdea}
+                              </p>
+                            </div>
+                          )}
+
+                          {/* About God & About People */}
+                          {(discussionGuide.aboutGod || discussionGuide.aboutPeople) && (
+                            <ul className="space-y-2">
+                              {discussionGuide.aboutGod && (
+                                <li className="flex gap-3 text-base leading-relaxed">
+                                  <span className="text-primary font-bold shrink-0">•</span>
+                                  <span className="text-foreground">
+                                    <span className="font-semibold">About God:</span> {discussionGuide.aboutGod}
+                                  </span>
+                                </li>
+                              )}
+                              {discussionGuide.aboutPeople && (
+                                <li className="flex gap-3 text-base leading-relaxed">
+                                  <span className="text-primary font-bold shrink-0">•</span>
+                                  <span className="text-foreground">
+                                    <span className="font-semibold">About People:</span> {discussionGuide.aboutPeople}
+                                  </span>
+                                </li>
+                              )}
+                            </ul>
+                          )}
+
+                          {/* Family Starter Question */}
+                          {discussionGuide.starterQuestion && (
+                            <div className="pt-4 border-t">
+                              <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                                Family Starter
+                              </h4>
+                              <p className="text-lg leading-relaxed text-foreground font-medium">
+                                {discussionGuide.starterQuestion}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
                 {questions.map((question, index) => {
                   const memberColor = getColorById(question.color);
+                  const isApplicationOpen = openApplications.has(
+                    question.familyMemberId
+                  );
                   return (
                     <Card
                       key={question.familyMemberId}
@@ -920,6 +1126,27 @@ export default function ReadingExperience({
                               >
                                 {question.question}
                               </p>
+                              <div className="mt-4 border-t pt-4">
+                                <button
+                                  onClick={() =>
+                                    toggleApplication(question.familyMemberId)
+                                  }
+                                  className="flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors"
+                                >
+                                  <span>Application idea</span>
+                                  <ChevronDown
+                                    className={`h-4 w-4 transition-transform ${
+                                      isApplicationOpen ? '-rotate-180' : ''
+                                    }`}
+                                  />
+                                </button>
+                                {isApplicationOpen && (
+                                  <p className="mt-3 text-base leading-relaxed text-muted-foreground">
+                                    {question.application ||
+                                      'Choose one simple way to live out this passage together this week.'}
+                                  </p>
+                                )}
+                              </div>
                             </div>
                           </div>
                         </div>

@@ -4,7 +4,9 @@
       "Bash(npx tsc:*)",
       "Read(//Users/henrik-iii/.claude/**)",
       "Bash(curl:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(find:*)",
+      "WebFetch(domain:agor.live)"
     ],
     "deny": [],
     "ask": []
