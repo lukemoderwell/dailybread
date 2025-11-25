@@ -12,6 +12,7 @@ Quick navigation for AI assistants and developers.
 - [reading-experience.md](features/reading-experience.md) - Core Bible reading flow
 - [discussion-guide.md](features/discussion-guide.md) - Big Idea + About God/People framework
 - [family-members.md](features/family-members.md) - Family member management
+- [achievements.md](features/achievements.md) - Gamification/streak system
 
 ## Patterns
 - [api-routes.md](patterns/api-routes.md) - Adding new API endpoints
