@@ -19,5 +19,9 @@ Quick navigation for AI assistants and developers.
 - [protected-pages.md](patterns/protected-pages.md) - Adding authenticated pages
 - [database.md](patterns/database.md) - Supabase + RLS patterns
 
+## Explorations
+Planned features not yet implemented:
+- [push-notifications.md](explorations/push-notifications.md) - Daily reminder notifications
+
 ## Quick Reference
 - [gotchas.md](gotchas.md) - Project-specific quirks
