@@ -811,6 +811,26 @@ export default function ReadingExperience({
 
         {/* Scripture Tab */}
         <TabsContent value="scripture" className="mt-6">
+          {/* Primer Question */}
+          {!isHistoricalView && isLoadingQuestions ? (
+            // Loading skeleton (only for current reading)
+            <div className="bg-muted/50 border border-muted rounded-lg p-4 space-y-2 mb-6">
+              <div className="h-5 w-32 bg-muted animate-pulse rounded"></div>
+              <div className="h-4 bg-muted animate-pulse rounded w-3/4"></div>
+              <div className="h-4 bg-muted animate-pulse rounded w-full"></div>
+            </div>
+          ) : discussionGuide?.starterQuestion && (
+            // Actual primer (for both current and historical views)
+            <div className="bg-muted/50 border border-muted rounded-lg p-4 space-y-2 mb-6">
+              <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                Before You Read
+              </p>
+              <p className="text-base leading-relaxed">
+                {discussionGuide.starterQuestion}
+              </p>
+            </div>
+          )}
+
           <Card className="border-0 md:border shadow-none md:shadow-sm">
             <CardContent className="pt-4 px-4 pb-8 md:pt-8 md:px-12 md:pb-12">
               <div className="mx-auto" style={{ maxWidth: '65ch' }}>
@@ -1062,18 +1082,6 @@ export default function ReadingExperience({
                                 </li>
                               )}
                             </ul>
-                          )}
-
-                          {/* Family Starter Question */}
-                          {discussionGuide.starterQuestion && (
-                            <div className="pt-4 border-t">
-                              <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-                                Family Starter
-                              </h4>
-                              <p className="text-lg leading-relaxed text-foreground font-medium">
-                                {discussionGuide.starterQuestion}
-                              </p>
-                            </div>
                           )}
                         </div>
                       )}

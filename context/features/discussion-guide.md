@@ -8,7 +8,7 @@ interface DiscussionGuide {
   bigIdea: string;        // One punchy, memorable statement
   aboutGod: string;       // What this reveals about God
   aboutPeople: string;    // What this reveals about us
-  starterQuestion: string; // Opening question for whole family
+  starterQuestion: string; // Primer question shown before reading
 }
 ```
 
@@ -21,4 +21,5 @@ Every passage answers two questions:
 `lib/ai/prompts/question-generation.ts`
 
 ## UI Location
-`components/reading/reading-experience.tsx` (~line 955)
+- **Primer Question**: Scripture tab (~line 814) - labeled "Before You Read"
+- **Discussion Guide**: Questions tab (~line 1005) - shows Big Idea, About God, About People

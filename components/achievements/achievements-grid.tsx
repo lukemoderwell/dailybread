@@ -13,7 +13,6 @@ interface Achievement {
   description: string;
   icon: string;
   isMajor: boolean;
-  sortOrder: number;
   unlocked: boolean;
   unlockedAt: string | null;
 }
@@ -27,28 +26,20 @@ export function AchievementsGrid({
   achievements,
   showCategories = true,
 }: AchievementsGridProps) {
-  // Group by category
+  const categories: AchievementCategory[] = ["streak", "book", "journey", "special"];
+  const unlockedCount = achievements.filter((a) => a.unlocked).length;
+
+  // Group by category (order preserved from ACHIEVEMENTS array)
   const byCategory = achievements.reduce(
     (acc, achievement) => {
-      if (!acc[achievement.category]) {
-        acc[achievement.category] = [];
-      }
+      if (!acc[achievement.category]) acc[achievement.category] = [];
       acc[achievement.category].push(achievement);
       return acc;
     },
     {} as Record<AchievementCategory, Achievement[]>
   );
 
-  // Sort each category by sortOrder
-  Object.values(byCategory).forEach((categoryAchievements) => {
-    categoryAchievements.sort((a, b) => a.sortOrder - b.sortOrder);
-  });
-
-  const categories: AchievementCategory[] = ["streak", "book", "journey", "special"];
-  const unlockedCount = achievements.filter((a) => a.unlocked).length;
-
   if (!showCategories) {
-    // Simple flat grid
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
@@ -58,11 +49,7 @@ export function AchievementsGrid({
         </div>
         <div className="flex flex-wrap gap-4">
           {achievements
-            .sort((a, b) => {
-              // Show unlocked first, then by category and sortOrder
-              if (a.unlocked !== b.unlocked) return a.unlocked ? -1 : 1;
-              return a.sortOrder - b.sortOrder;
-            })
+            .sort((a, b) => (a.unlocked === b.unlocked ? 0 : a.unlocked ? -1 : 1))
             .map((achievement) => (
               <AchievementBadge
                 key={achievement.id}
@@ -89,7 +76,7 @@ export function AchievementsGrid({
 
       {categories.map((category) => {
         const categoryAchievements = byCategory[category];
-        if (!categoryAchievements || categoryAchievements.length === 0) return null;
+        if (!categoryAchievements?.length) return null;
 
         const categoryUnlocked = categoryAchievements.filter((a) => a.unlocked).length;
 
