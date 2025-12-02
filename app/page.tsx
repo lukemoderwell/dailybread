@@ -93,6 +93,14 @@ export default async function Home() {
                 >
                   <Link href="/login">Sign In</Link>
                 </Button>
+                <Button
+                  asChild
+                  size="lg"
+                  variant="ghost"
+                  className="h-12 px-8 text-base"
+                >
+                  <Link href="/demo">See a demo</Link>
+                </Button>
               </div>
               <div className="mt-8 flex items-center gap-4 text-sm text-muted-foreground">
                 <div className="flex items-center gap-1">
