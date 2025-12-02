@@ -3,6 +3,7 @@ import { Geist, Geist_Mono, Crimson_Pro } from 'next/font/google';
 import './globals.css';
 import { ThemeProvider } from '@/components/theme-provider';
 import { Toaster } from '@/components/ui/sonner';
+import { Analytics } from '@vercel/analytics/next';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -25,8 +26,14 @@ export const metadata: Metadata = {
     template: '%s | dailybread',
   },
   description:
-    'Daily Bible readings with age-appropriate questions for each child. Audio-first experience so you can focus on your family, not your phone.',
-  keywords: ['Bible', 'Family', 'Bible Study', 'Audio', 'Family Bible Study'],
+    'Daily Bible readings with progress tracking, discussion guides, andage-appropriate questions for each child.',
+  keywords: [
+    'Bible',
+    'Family',
+    'Bible Study',
+    'Discussion Guides',
+    'Family Bible Stu◊dy',
+  ],
 };
 
 export default function RootLayout({
@@ -46,6 +53,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           {children}
+          <Analytics />
           <Toaster />
         </ThemeProvider>
       </body>
