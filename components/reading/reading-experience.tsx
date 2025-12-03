@@ -275,29 +275,6 @@ export default function ReadingExperience({
         setPassage(htmlContent);
         setReference(passageData.reference);
 
-        // Highlight Jesus' words (Gospels and Acts)
-        const gospelsAndActs = ['Matthew', 'Mark', 'Luke', 'John', 'Acts'];
-        if (gospelsAndActs.includes(passageData.book)) {
-          fetch('/api/bible/highlight-jesus-words', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              htmlContent: passageData.content,
-              reference: passageData.reference,
-              book: passageData.book,
-            }),
-          })
-            .then(async (highlightRes) => {
-              if (highlightRes.ok) {
-                const highlightData = await highlightRes.json();
-                if (highlightData.highlightedContent) {
-                  setPassage(highlightData.highlightedContent);
-                }
-              }
-            })
-            .catch(console.error);
-        }
-
         // Store passage metadata
         setPassageMetadata({
           startBook: passageData.book,
@@ -878,17 +855,6 @@ export default function ReadingExperience({
                     .scripture-content :global(.add) {
                       font-style: italic;
                       opacity: 0.95;
-                    }
-
-                    .scripture-content :global(.jesus-words) {
-                      color: hsl(0, 65%, 50%);
-                      font-weight: 500;
-                    }
-
-                    @media (prefers-color-scheme: dark) {
-                      .scripture-content :global(.jesus-words) {
-                        color: hsl(0, 70%, 65%);
-                      }
                     }
 
                     .scripture-content :global(.s),
