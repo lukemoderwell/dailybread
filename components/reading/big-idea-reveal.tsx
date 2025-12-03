@@ -1,8 +1,9 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Lightbulb } from 'lucide-react';
+import { Lightbulb, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 
 interface BigIdeaRevealProps {
   bigIdea: string;
@@ -18,69 +19,94 @@ export default function BigIdeaReveal({
   onContinue,
 }: BigIdeaRevealProps) {
   return (
-    <div className="max-w-lg mx-auto px-4 py-8">
+    <div className="max-w-2xl mx-auto px-4 py-8 md:py-16 flex flex-col items-center justify-center min-h-[60vh]">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
-        className="text-center mb-8"
+        className="text-center mb-10"
       >
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
-          <Lightbulb className="h-8 w-8 text-primary" />
+        <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-amber-100 mb-6 shadow-sm rotate-3 transition-transform hover:rotate-0">
+          <Lightbulb className="h-10 w-10 text-amber-600" strokeWidth={2.5} />
         </div>
-        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+        <h2 className="text-sm font-bold text-amber-600 uppercase tracking-widest mb-2">
           The Big Idea
         </h2>
       </motion.div>
 
       {/* Big Idea - Main reveal */}
       <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
+        initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
-        transition={{ delay: 0.5, type: 'spring', stiffness: 200 }}
-        className="text-center mb-8"
+        transition={{ delay: 0.4, type: 'spring', bounce: 0.4 }}
+        className="text-center mb-12 max-w-xl"
       >
-        <p className="text-2xl md:text-3xl font-bold leading-tight text-foreground">
-          {bigIdea}
-        </p>
+        <div className="relative">
+          <span className="absolute -top-8 -left-4 text-6xl text-muted-foreground/10 font-serif leading-none select-none">
+            &ldquo;
+          </span>
+          <p className="text-3xl md:text-4xl lg:text-5xl font-bold leading-tight text-foreground font-serif">
+            {bigIdea}
+          </p>
+          <span className="absolute -bottom-8 -right-4 text-6xl text-muted-foreground/10 font-serif leading-none select-none">
+            &rdquo;
+          </span>
+        </div>
       </motion.div>
 
-      {/* About God & About People */}
+      {/* Supporting Points Card */}
       {(aboutGod || aboutPeople) && (
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.8 }}
-          className="space-y-4 mb-8"
+          transition={{ delay: 0.8, type: 'spring', damping: 20 }}
+          className="w-full max-w-lg mb-10"
         >
-          {aboutGod && (
-            <div className="bg-muted/50 rounded-lg p-4">
-              <p className="text-sm font-semibold text-primary mb-1">About God</p>
-              <p className="text-base leading-relaxed">{aboutGod}</p>
+          <Card className="border-none bg-muted/30 shadow-sm overflow-hidden">
+            <div className="grid md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-border">
+              {aboutGod && (
+                <div className="p-6 text-center md:text-left">
+                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
+                    About God
+                  </p>
+                  <p className="text-sm md:text-base leading-relaxed text-foreground/90">
+                    {aboutGod}
+                  </p>
+                </div>
+              )}
+              {aboutPeople && (
+                <div className="p-6 text-center md:text-left">
+                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
+                    About People
+                  </p>
+                  <p className="text-sm md:text-base leading-relaxed text-foreground/90">
+                    {aboutPeople}
+                  </p>
+                </div>
+              )}
             </div>
-          )}
-          {aboutPeople && (
-            <div className="bg-muted/50 rounded-lg p-4">
-              <p className="text-sm font-semibold text-primary mb-1">About People</p>
-              <p className="text-base leading-relaxed">{aboutPeople}</p>
-            </div>
-          )}
+          </Card>
         </motion.div>
       )}
 
-      {/* Echo prompt */}
+      {/* Action Footer */}
       <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 1.1 }}
-        className="text-center"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 1.2 }}
+        className="text-center w-full max-w-xs"
       >
-        <p className="text-sm text-muted-foreground mb-4">
-          Say it together as a family!
+        <p className="text-sm font-medium text-muted-foreground mb-4">
+          Say it out loud together!
         </p>
-        <Button size="lg" onClick={onContinue} className="min-w-[200px]">
-          We Got It!
+        <Button
+          size="lg"
+          onClick={onContinue}
+          className="w-full h-14 text-lg rounded-full shadow-md hover:shadow-lg transition-all"
+        >
+          We Said It!
+          <ChevronRight className="ml-2 h-5 w-5 opacity-50" />
         </Button>
       </motion.div>
     </div>

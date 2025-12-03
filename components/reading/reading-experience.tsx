@@ -357,31 +357,26 @@ export default function ReadingExperience({
                   const prevData = await prevRes.json();
                   setPreviousReference(prevData.session.content.reference || '');
 
-                  // Use cached summary if available, otherwise generate one
-                  if (prevData.session.summary) {
-                    setPreviousSummary(prevData.session.summary);
-                  } else {
-                    // Generate a brief summary focused on scripture content
-                    const prevContent = prevData.session.content;
-                    const scriptureText = prevContent.scripture_text
-                      ?.replace(/<[^>]*>/g, ' ')
-                      .replace(/\s+/g, ' ')
-                      .trim();
+                  // Always generate fresh summary (scripture-focused, not question-focused)
+                  const prevContent = prevData.session.content;
+                  const scriptureText = prevContent.scripture_text
+                    ?.replace(/<[^>]*>/g, ' ')
+                    .replace(/\s+/g, ' ')
+                    .trim();
 
-                    const summaryRes = await fetch('/api/bible/summarize-session', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        sessionId: prevData.session.id,
-                        reference: prevContent.reference,
-                        scriptureText,
-                        bigIdea: prevContent.discussionGuide?.bigIdea,
-                      }),
-                    });
-                    if (summaryRes.ok) {
-                      const summaryData = await summaryRes.json();
-                      setPreviousSummary(summaryData.summary);
-                    }
+                  const summaryRes = await fetch('/api/bible/summarize-session', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      sessionId: prevData.session.id,
+                      reference: prevContent.reference,
+                      scriptureText,
+                      bigIdea: prevContent.discussionGuide?.bigIdea,
+                    }),
+                  });
+                  if (summaryRes.ok) {
+                    const summaryData = await summaryRes.json();
+                    setPreviousSummary(summaryData.summary);
                   }
                 }
               }

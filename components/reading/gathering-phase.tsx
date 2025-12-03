@@ -115,7 +115,7 @@ export default function GatheringPhase({
         transition={{ delay: 0.9 + familyMembers.length * 0.1 }}
       >
         <Button size="lg" onClick={onReady} className="min-w-[200px]">
-          Get Started
+          Start Reading
         </Button>
       </motion.div>
     </div>
