@@ -9,7 +9,10 @@ export const maxDuration = 10;
 interface SummarizeRequest {
   sessionId: number;
   reference: string;
-  questions: Array<{
+  scriptureText?: string;
+  bigIdea?: string;
+  // Legacy: questions are no longer used for summaries
+  questions?: Array<{
     name: string;
     question: string;
   }>;
@@ -26,26 +29,22 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { sessionId, reference, questions }: SummarizeRequest =
+    const { sessionId, reference, scriptureText, bigIdea }: SummarizeRequest =
       await req.json();
 
-    // Build a simple prompt for summarization
-    const questionsText = questions
-      .map((q) => `${q.name}: ${q.question}`)
-      .join('\n');
+    // Build a prompt focused on scripture content
+    const prompt = `Write a 2-3 sentence "Previously on..." recap for a family Bible reading.
 
-    const prompt = `Create a 2-3 sentence summary of this family Bible reading session.
+Scripture Reference: ${reference}
+${bigIdea ? `\nMain Point: ${bigIdea}` : ''}
+${scriptureText ? `\nPassage Text:\n${scriptureText.slice(0, 1500)}` : ''}
 
-Scripture: ${reference}
+Write a brief, engaging recap that reminds the family what they read last time. Focus on:
+- The key events, characters, or teachings from the passage
+- The most important spiritual truth or lesson
 
-Questions asked:
-${questionsText}
-
-Format:
-First sentence: What scripture passage was read (just the reference and a 5-word description if helpful).
-Remaining sentences: Briefly mention what each child was asked about (name + topic in 5-10 words each).
-
-Keep it very concise and conversational.`;
+Style: Conversational, like a narrator setting up the next episode. 2-3 sentences max.
+Do NOT mention questions or discussion - just summarize what happened in the scripture.`;
 
     const { text } = await generateText({
       model: openai(AI_MODELS.QUICK),

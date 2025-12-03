@@ -164,6 +164,40 @@ const QUALITY_CHECKLIST = `
 □ Could lead to meaningful family conversation
 □ Memorable - they'll think about it later`;
 
+const DISCOVERY_GUIDELINES = `
+**DAILY DISCOVERY** - Create ONE discovery element that adds wonder and depth:
+
+Choose the most fitting type for this passage:
+
+1. **HIDDEN CONNECTION** (use ~60% of the time):
+   Find a meaningful link between this passage and another part of the Bible.
+   - Prioritize connections to well-known stories children likely know
+   - Connect to Jesus whenever possible (He is the ultimate connection)
+   - Keep it simple and memorable (2-3 sentences max)
+   - Example: "Did you notice? Today's story about Joseph forgiving his brothers reminds us of how God forgives us through Jesus!"
+
+2. **WONDER FACT** (use ~25% of the time):
+   Share ONE fascinating detail about the passage:
+   - Historical context that illuminates meaning
+   - Geographic or cultural detail that brings the story alive
+   - Simple original language insight
+   - Keep it to 2-3 sentences, child-friendly
+   - Example: "The Sea of Galilee is actually a freshwater lake! Storms can appear so suddenly that even experienced fishermen get caught off guard."
+
+3. **FAMILY CHALLENGE** (use ~15% of the time):
+   Suggest a simple practice for the whole family this week:
+   - Must be doable by all ages
+   - Directly applies the passage's message
+   - One concrete, actionable thing
+   - Example: "This week, practice courage like David. Each person try one brave thing and share it with the family."
+
+**TOMORROW'S PREVIEW** - Create anticipation for the next reading:
+Write a one-sentence teaser that creates a "cliffhanger" feeling without giving away the story.
+- Use mystery and intrigue
+- Make them curious about what happens next
+- Example: "Tomorrow you'll discover what happens when a king makes a terrible promise..."
+`;
+
 const OUTPUT_FORMAT = `
 {
   "discussionGuide": {
@@ -175,7 +209,12 @@ const OUTPUT_FORMAT = `
   "questions": [
     {"name": "FirstChildName", "question": "Your creative question here?", "application": "Simple, age-appropriate action for this child"},
     {"name": "SecondChildName", "question": "Your creative question here?", "application": "Simple, age-appropriate action for this child"}
-  ]
+  ],
+  "discovery": {
+    "type": "connection" | "wonder" | "challenge",
+    "content": "The discovery content here (2-3 sentences max)"
+  },
+  "tomorrowPreview": "One sentence teaser for tomorrow's reading..."
 }`;
 
 /**
@@ -205,11 +244,18 @@ YOUR TASK:
 
 2) Generate ONE unique question **and** ONE practical, age-appropriate **application idea** for each family member listed above. These questions should work together as a complementary set for a rich family discussion.
 
+3) Create a **daily discovery** element - one special insight that adds wonder to the reading. This could be a hidden Bible connection, a fascinating fact, or a family challenge.
+
+4) Write a **tomorrow's preview** teaser - one sentence that creates anticipation for the next reading.
+
 CRITICAL REQUIREMENTS:
 ${CRITICAL_REQUIREMENTS}
 
 AGE-APPROPRIATE GUIDELINES:
 ${AGE_GUIDELINES}
+
+DISCOVERY & PREVIEW GUIDELINES:
+${DISCOVERY_GUIDELINES}
 
 QUALITY CHECKLIST - Before finalizing, verify each question:
 ${QUALITY_CHECKLIST}
