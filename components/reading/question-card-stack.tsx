@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { motion, useMotionValue, useTransform, AnimatePresence } from 'framer-motion';
 import { getColorById } from '@/lib/colors';
 import { Check, SkipForward, ChevronDown, ThumbsUp, ThumbsDown, MoreHorizontal } from 'lucide-react';
@@ -36,19 +36,26 @@ export default function QuestionCardStack({
   questionFeedback,
   isHistoricalView = false,
 }: QuestionCardStackProps) {
-  // Shuffle questions on mount for surprise order
-  const [shuffledQuestions, setShuffledQuestions] = useState<Question[]>([]);
+  // Shuffle questions once on initial mount (for surprise order)
+  // Using useRef to persist the shuffled array and only shuffle once per questions array
+  const shuffledRef = useRef<Question[] | null>(null);
+  const questionsKeyRef = useRef<string>('');
+
+  // Create a stable key from question IDs to detect when questions change
+  const questionsKey = questions.map((q) => q.familyMemberId).join(',');
+
+  if (shuffledRef.current === null || questionsKeyRef.current !== questionsKey) {
+    shuffledRef.current = [...questions].sort(() => Math.random() - 0.5);
+    questionsKeyRef.current = questionsKey;
+  }
+
+  const shuffledQuestions = shuffledRef.current;
+
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answeredQuestions, setAnsweredQuestions] = useState<Question[]>([]);
   const [skippedQuestions, setSkippedQuestions] = useState<Question[]>([]);
   const [showCelebration, setShowCelebration] = useState(false);
   const [expandedApplication, setExpandedApplication] = useState(false);
-
-  // Shuffle questions on mount
-  useEffect(() => {
-    const shuffled = [...questions].sort(() => Math.random() - 0.5);
-    setShuffledQuestions(shuffled);
-  }, [questions]);
 
   const currentQuestion = shuffledQuestions[currentIndex];
   const remainingCards = shuffledQuestions.length - currentIndex;

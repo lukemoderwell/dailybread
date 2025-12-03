@@ -48,10 +48,15 @@ interface Question {
 }
 
 interface DiscussionGuide {
-  bigIdea: string;
+  // New format
+  summary?: string;
+  keyPoints?: string[];
+  // Kept for reference
   aboutGod: string;
   aboutPeople: string;
   starterQuestion: string;
+  // Legacy field for backwards compatibility
+  bigIdea?: string;
 }
 
 interface Discovery {
@@ -300,107 +305,108 @@ export default function ReadingExperience({
         // Move to gathering phase (content will load in background)
         setPhase('gathering');
 
-        // Load questions in parallel
-        Promise.all([
-          fetch('/api/bible/generate-questions', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              passage: plainText,
-              reference: passageData.reference,
-              familyMembers: familyMembers,
-            }),
-          })
-            .then(async (questionsRes) => {
-              if (questionsRes.ok) {
-                const questionsData = await questionsRes.json();
-                setQuestions(questionsData.questions);
+        // First fetch navigation metadata to get previous session info
+        let previousContext: {
+          reference: string;
+          passageExcerpt: string;
+        } | null = null;
 
-                // Handle discussion guide
-                const guide = questionsData.discussionGuide;
-                if (
-                  guide &&
-                  typeof guide === 'object' &&
-                  !Array.isArray(guide)
-                ) {
-                  setDiscussionGuide(guide);
-                } else if (guide) {
-                  const summaryText = Array.isArray(guide)
-                    ? guide.join('\n\n')
-                    : guide;
-                  setDiscussionGuide({
-                    bigIdea: summaryText,
-                    aboutGod: '',
-                    aboutPeople: '',
-                    starterQuestion: '',
-                  });
-                }
-
-                // Handle discovery and preview if present
-                if (questionsData.discovery) {
-                  setDiscovery(questionsData.discovery);
-                }
-                if (questionsData.tomorrowPreview) {
-                  setTomorrowPreview(questionsData.tomorrowPreview);
-                }
-              }
-            })
-            .finally(() => setIsLoadingQuestions(false)),
-
-          // Fetch navigation metadata and previous session summary
-          fetch('/api/bible/sessions', {
+        try {
+          const navRes = await fetch('/api/bible/sessions', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({}),
-          }).then(async (navRes) => {
-            if (navRes.ok) {
-              const navData = await navRes.json();
-              setNavigationMeta(navData.navigation);
+          });
 
-              // Fetch previous session for "Previously on..." recap
-              if (navData.navigation.previousId) {
-                const prevRes = await fetch('/api/bible/sessions', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    sessionId: navData.navigation.previousId,
-                  }),
-                });
-                if (prevRes.ok) {
-                  const prevData = await prevRes.json();
-                  setPreviousReference(
-                    prevData.session.content.reference || ''
-                  );
+          if (navRes.ok) {
+            const navData = await navRes.json();
+            setNavigationMeta(navData.navigation);
 
-                  // Always generate fresh summary (scripture-focused, not question-focused)
-                  const prevContent = prevData.session.content;
-                  const scriptureText = prevContent.scripture_text
-                    ?.replace(/<[^>]*>/g, ' ')
-                    .replace(/\s+/g, ' ')
-                    .trim();
+            // Fetch previous session content for question generation context
+            if (navData.navigation.previousId) {
+              const prevRes = await fetch('/api/bible/sessions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  sessionId: navData.navigation.previousId,
+                }),
+              });
+              if (prevRes.ok) {
+                const prevData = await prevRes.json();
+                const prevContent = prevData.session.content;
+                setPreviousReference(prevContent.reference || '');
 
-                  const summaryRes = await fetch(
-                    '/api/bible/summarize-session',
-                    {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        sessionId: prevData.session.id,
-                        reference: prevContent.reference,
-                        scriptureText,
-                        bigIdea: prevContent.discussionGuide?.bigIdea,
-                      }),
-                    }
-                  );
-                  if (summaryRes.ok) {
-                    const summaryData = await summaryRes.json();
-                    setPreviousSummary(summaryData.summary);
-                  }
-                }
+                // Extract plain text excerpt from previous session
+                const prevScriptureText = prevContent.scripture_text
+                  ?.replace(/<[^>]*>/g, ' ')
+                  .replace(/\s+/g, ' ')
+                  .trim();
+
+                previousContext = {
+                  reference: prevContent.reference,
+                  passageExcerpt: prevScriptureText?.slice(0, 500) || '',
+                };
               }
             }
+          }
+        } catch (navError) {
+          console.error('Navigation fetch error:', navError);
+        }
+
+        // Now generate questions with previous session context
+        fetch('/api/bible/generate-questions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            passage: plainText,
+            reference: passageData.reference,
+            familyMembers: familyMembers,
+            previousReference: previousContext?.reference,
+            previousPassageExcerpt: previousContext?.passageExcerpt,
           }),
-        ]).catch(console.error);
+        })
+          .then(async (questionsRes) => {
+            if (questionsRes.ok) {
+              const questionsData = await questionsRes.json();
+              setQuestions(questionsData.questions);
+
+              // Handle discussion guide (new format with summary + keyPoints)
+              const guide = questionsData.discussionGuide;
+              if (
+                guide &&
+                typeof guide === 'object' &&
+                !Array.isArray(guide)
+              ) {
+                setDiscussionGuide(guide);
+              } else if (guide) {
+                const summaryText = Array.isArray(guide)
+                  ? guide.join('\n\n')
+                  : guide;
+                setDiscussionGuide({
+                  summary: summaryText,
+                  keyPoints: [],
+                  aboutGod: '',
+                  aboutPeople: '',
+                  starterQuestion: '',
+                });
+              }
+
+              // Handle previousRecap from question generation
+              if (questionsData.previousRecap) {
+                setPreviousSummary(questionsData.previousRecap);
+              }
+
+              // Handle discovery and preview if present
+              if (questionsData.discovery) {
+                setDiscovery(questionsData.discovery);
+              }
+              if (questionsData.tomorrowPreview) {
+                setTomorrowPreview(questionsData.tomorrowPreview);
+              }
+            }
+          })
+          .catch(console.error)
+          .finally(() => setIsLoadingQuestions(false));
       } catch (error) {
         console.error('Content loading error:', error);
         toast.error("Failed to load today's reading");
@@ -952,6 +958,8 @@ export default function ReadingExperience({
             exit={{ opacity: 0, y: -20 }}
           >
             <BigIdeaReveal
+              summary={discussionGuide.summary}
+              keyPoints={discussionGuide.keyPoints}
               bigIdea={discussionGuide.bigIdea}
               aboutGod={discussionGuide.aboutGod}
               aboutPeople={discussionGuide.aboutPeople}
