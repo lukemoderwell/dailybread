@@ -4,12 +4,7 @@ import { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import {
-  ChevronLeft,
-  ChevronRight,
-  BookOpen,
-  Loader2,
-} from 'lucide-react';
+import { ChevronLeft, ChevronRight, BookOpen, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { createSupabaseClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
@@ -104,7 +99,8 @@ export default function ReadingExperience({
   const [passage, setPassage] = useState('');
   const [reference, setReference] = useState('');
   const [questions, setQuestions] = useState<Question[]>([]);
-  const [discussionGuide, setDiscussionGuide] = useState<DiscussionGuide | null>(null);
+  const [discussionGuide, setDiscussionGuide] =
+    useState<DiscussionGuide | null>(null);
   const [discovery, setDiscovery] = useState<Discovery | null>(null);
   const [tomorrowPreview, setTomorrowPreview] = useState<string>('');
   const [isLoadingQuestions, setIsLoadingQuestions] = useState(true);
@@ -205,7 +201,9 @@ export default function ReadingExperience({
           if (guide && typeof guide === 'object' && !Array.isArray(guide)) {
             setDiscussionGuide(guide);
           } else if (guide) {
-            const summaryText = Array.isArray(guide) ? guide.join('\n\n') : guide;
+            const summaryText = Array.isArray(guide)
+              ? guide.join('\n\n')
+              : guide;
             setDiscussionGuide({
               bigIdea: summaryText,
               aboutGod: '',
@@ -229,13 +227,20 @@ export default function ReadingExperience({
             setSessionSummary(sessionData.session.summary);
           } else {
             setIsLoadingSummary(true);
+            const sessionContent = sessionData.session.content;
+            const scriptureText = sessionContent.scripture_text
+              ?.replace(/<[^>]*>/g, ' ')
+              .replace(/\s+/g, ' ')
+              .trim();
+
             fetch('/api/bible/summarize-session', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 sessionId: sessionData.session.id,
-                reference: sessionData.session.content.reference,
-                questions: sessionData.session.content.questions || [],
+                reference: sessionContent.reference,
+                scriptureText,
+                bigIdea: sessionContent.discussionGuide?.bigIdea,
               }),
             })
               .then(async (summaryRes) => {
@@ -313,10 +318,16 @@ export default function ReadingExperience({
 
                 // Handle discussion guide
                 const guide = questionsData.discussionGuide;
-                if (guide && typeof guide === 'object' && !Array.isArray(guide)) {
+                if (
+                  guide &&
+                  typeof guide === 'object' &&
+                  !Array.isArray(guide)
+                ) {
                   setDiscussionGuide(guide);
                 } else if (guide) {
-                  const summaryText = Array.isArray(guide) ? guide.join('\n\n') : guide;
+                  const summaryText = Array.isArray(guide)
+                    ? guide.join('\n\n')
+                    : guide;
                   setDiscussionGuide({
                     bigIdea: summaryText,
                     aboutGod: '',
@@ -351,11 +362,15 @@ export default function ReadingExperience({
                 const prevRes = await fetch('/api/bible/sessions', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ sessionId: navData.navigation.previousId }),
+                  body: JSON.stringify({
+                    sessionId: navData.navigation.previousId,
+                  }),
                 });
                 if (prevRes.ok) {
                   const prevData = await prevRes.json();
-                  setPreviousReference(prevData.session.content.reference || '');
+                  setPreviousReference(
+                    prevData.session.content.reference || ''
+                  );
 
                   // Always generate fresh summary (scripture-focused, not question-focused)
                   const prevContent = prevData.session.content;
@@ -364,16 +379,19 @@ export default function ReadingExperience({
                     .replace(/\s+/g, ' ')
                     .trim();
 
-                  const summaryRes = await fetch('/api/bible/summarize-session', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      sessionId: prevData.session.id,
-                      reference: prevContent.reference,
-                      scriptureText,
-                      bigIdea: prevContent.discussionGuide?.bigIdea,
-                    }),
-                  });
+                  const summaryRes = await fetch(
+                    '/api/bible/summarize-session',
+                    {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        sessionId: prevData.session.id,
+                        reference: prevContent.reference,
+                        scriptureText,
+                        bigIdea: prevContent.discussionGuide?.bigIdea,
+                      }),
+                    }
+                  );
                   if (summaryRes.ok) {
                     const summaryData = await summaryRes.json();
                     setPreviousSummary(summaryData.summary);
@@ -617,10 +635,18 @@ export default function ReadingExperience({
 
           if (newAchievements && newAchievements.length > 0) {
             setAchievementNotifications(
-              newAchievements.map((a: { id: string; name: string; description: string; icon: string; isMajor: boolean }) => ({
-                notificationId: a.id,
-                achievement: a,
-              }))
+              newAchievements.map(
+                (a: {
+                  id: string;
+                  name: string;
+                  description: string;
+                  icon: string;
+                  isMajor: boolean;
+                }) => ({
+                  notificationId: a.id,
+                  achievement: a,
+                })
+              )
             );
             setPendingRefresh(true);
             setIsCompletingReading(false);
@@ -752,7 +778,9 @@ export default function ReadingExperience({
         <div className="bg-muted/50 border border-muted rounded-lg p-4 space-y-2 mb-6">
           {isLoadingSummary ? (
             <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">Loading summary...</p>
+              <p className="text-sm text-muted-foreground">
+                Loading summary...
+              </p>
               <div className="h-4 bg-muted animate-pulse rounded w-3/4"></div>
             </div>
           ) : sessionSummary ? (
@@ -891,7 +919,9 @@ export default function ReadingExperience({
                       className="min-w-[200px]"
                     >
                       <ChevronRight className="mr-2 h-5 w-5" />
-                      {navigationMeta.hasNext ? 'Next Reading' : "Today's Reading"}
+                      {navigationMeta.hasNext
+                        ? 'Next Reading'
+                        : "Today's Reading"}
                     </Button>
                   ) : isLoadingQuestions ? (
                     <Button size="lg" disabled className="min-w-[200px]">
@@ -938,8 +968,12 @@ export default function ReadingExperience({
             exit={{ opacity: 0, y: -20 }}
           >
             <div className="text-center mb-6">
-              <h2 className="text-lg font-bold text-foreground">Family Questions</h2>
-              <p className="text-sm text-muted-foreground">Swipe through each question</p>
+              <h2 className="text-lg font-bold text-foreground">
+                Family Questions
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Swipe through each question
+              </p>
             </div>
             <QuestionCardStack
               questions={questions}
