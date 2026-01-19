@@ -9,6 +9,9 @@ interface PromptContext {
   passage: string;
   reference: string;
   familyContext: string;
+  // Previous session context for "Previously on..." recap
+  previousReference?: string;
+  previousPassageExcerpt?: string;
 }
 
 const AGE_GUIDELINES = `
@@ -164,38 +167,111 @@ const QUALITY_CHECKLIST = `
 □ Could lead to meaningful family conversation
 □ Memorable - they'll think about it later`;
 
+const DISCOVERY_GUIDELINES = `
+**DAILY DISCOVERY** - Create ONE discovery element that adds wonder and depth:
+
+Choose the most fitting type for this passage:
+
+1. **HIDDEN CONNECTION** (use ~60% of the time):
+   Find a meaningful link between this passage and another part of the Bible.
+   - Prioritize connections to well-known stories children likely know
+   - Connect to Jesus whenever possible (He is the ultimate connection)
+   - Keep it simple and memorable (2-3 sentences max)
+   - Example: "Did you notice? Today's story about Joseph forgiving his brothers reminds us of how God forgives us through Jesus!"
+
+2. **WONDER FACT** (use ~25% of the time):
+   Share ONE fascinating detail about the passage:
+   - Historical context that illuminates meaning
+   - Geographic or cultural detail that brings the story alive
+   - Simple original language insight
+   - Keep it to 2-3 sentences, child-friendly
+   - Example: "The Sea of Galilee is actually a freshwater lake! Storms can appear so suddenly that even experienced fishermen get caught off guard."
+
+3. **FAMILY CHALLENGE** (use ~15% of the time):
+   Suggest a simple practice for the whole family this week:
+   - Must be doable by all ages
+   - Directly applies the passage's message
+   - One concrete, actionable thing
+   - Example: "This week, practice courage like David. Each person try one brave thing and share it with the family."
+
+**TOMORROW'S PREVIEW** - Create anticipation for the next reading:
+Write a one-sentence teaser that creates a "cliffhanger" feeling without giving away the story.
+- Use mystery and intrigue
+- Make them curious about what happens next
+- Example: "Tomorrow you'll discover what happens when a king makes a terrible promise..."
+`;
+
+const PREVIOUS_RECAP_GUIDELINES = `
+**"PREVIOUSLY ON..." RECAP** - Generate a TV-style recap of yesterday's reading:
+
+If previous session context is provided, write a 2-3 sentence recap that:
+- Summarizes what the family read in their last session
+- Highlights the key events, characters, or teachings
+- Captures the most important spiritual truth or lesson
+- Uses conversational, engaging language like a narrator setting up the next episode
+
+Style examples:
+- "Last time, we saw Abraham make a huge decision to leave everything he knew and follow God into the unknown. God promised to make him into a great nation, even though Abraham had no idea where he was going!"
+- "Previously, Joseph had been sold into slavery by his jealous brothers. But even in Egypt, God was with him, helping him rise to become a trusted servant in Potiphar's house."
+
+If no previous session is provided, set previousRecap to null.
+`;
+
 const OUTPUT_FORMAT = `
 {
   "discussionGuide": {
-    "bigIdea": "One punchy, memorable statement capturing the core truth of this passage",
+    "summary": "One rich paragraph (4-6 sentences) summarizing the passage with context and insight, like a study Bible note. Include what's happening, why it matters, and any helpful background.",
+    "keyPoints": [
+      "First key insight or theme from the passage",
+      "Second important point to remember",
+      "Third takeaway for the family",
+      "Optional fourth point if needed"
+    ],
     "aboutGod": "What this passage reveals about God's character, nature, or actions",
     "aboutPeople": "What this passage reveals about humanity, our nature, or how we should respond",
     "starterQuestion": "One thoughtful, engaging question that works for the whole family together"
   },
+  "previousRecap": "2-3 sentence 'Previously on...' recap of yesterday's reading (or null if no previous session)",
   "questions": [
     {"name": "FirstChildName", "question": "Your creative question here?", "application": "Simple, age-appropriate action for this child"},
     {"name": "SecondChildName", "question": "Your creative question here?", "application": "Simple, age-appropriate action for this child"}
-  ]
+  ],
+  "discovery": {
+    "type": "connection" | "wonder" | "challenge",
+    "content": "The discovery content here (2-3 sentences max)"
+  },
+  "tomorrowPreview": "One sentence teaser for tomorrow's reading..."
 }`;
 
 /**
  * Builds the complete prompt for question generation
  */
 export function buildQuestionGenerationPrompt(context: PromptContext): string {
+  // Build previous session context section if available
+  const previousSessionSection = context.previousReference
+    ? `
+PREVIOUS SESSION (for "Previously on..." recap):
+Reference: ${context.previousReference}
+Excerpt: ${context.previousPassageExcerpt || 'Not available'}
+`
+    : '';
+
   return `You are an EXCEPTIONAL family Bible study facilitator known worldwide for creating the most engaging, thought-provoking discussion questions in Christian education. Your questions are legendary for sparking genuine curiosity, "aha!" moments of discovery, building authentic lasting faith, and making children EXCITED to dive into Scripture together.
 
 Your entire goal is to design the perfect question for each family member that leads them to DISCOVER God's truth through Jesus, builds their FAITH, and creates moments they'll REMEMBER.
 
-SCRIPTURE: ${context.reference}
+TODAY'S SCRIPTURE: ${context.reference}
 ${context.passage}
-
+${previousSessionSection}
 FAMILY MEMBERS:
 - ${context.familyContext}
 
 YOUR TASK:
 1) Create a structured **discussion guide** with this framework:
 
-   **Big Idea**: One punchy, memorable statement that captures the core truth of this passage. Make it stick. This is what you want the family to walk away remembering.
+   **Summary**: One rich paragraph (4-6 sentences) summarizing the passage with context and insight, like a study Bible note. Include what's happening, why it matters, and any helpful background. Write in an engaging, accessible style for families.
+
+   **Key Points**: 3-4 bullet takeaways that the family should remember from this passage. These are the most important truths, principles, or lessons.
 
    **About God**: What does this scripture tell us about God? His character, His nature, His actions, His heart. One clear, insightful sentence.
 
@@ -203,13 +279,24 @@ YOUR TASK:
 
    **Family Starter Question**: ONE thoughtful discussion question that works for the entire family together. This should be engaging, open-ended, and serve as a great conversation starter before diving into individual questions. Make it accessible to all ages represented in the family.
 
-2) Generate ONE unique question **and** ONE practical, age-appropriate **application idea** for each family member listed above. These questions should work together as a complementary set for a rich family discussion.
+2) ${context.previousReference ? 'Generate a **"Previously on..."** recap of yesterday\'s reading (2-3 sentences).' : 'Set **previousRecap** to null (no previous session).'}
+
+3) Generate ONE unique question **and** ONE practical, age-appropriate **application idea** for each family member listed above. These questions should work together as a complementary set for a rich family discussion.
+
+4) Create a **daily discovery** element - one special insight that adds wonder to the reading. This could be a hidden Bible connection, a fascinating fact, or a family challenge.
+
+5) Write a **tomorrow's preview** teaser - one sentence that creates anticipation for the next reading.
 
 CRITICAL REQUIREMENTS:
 ${CRITICAL_REQUIREMENTS}
 
 AGE-APPROPRIATE GUIDELINES:
 ${AGE_GUIDELINES}
+
+${context.previousReference ? `PREVIOUS RECAP GUIDELINES:\n${PREVIOUS_RECAP_GUIDELINES}` : ''}
+
+DISCOVERY & PREVIEW GUIDELINES:
+${DISCOVERY_GUIDELINES}
 
 QUALITY CHECKLIST - Before finalizing, verify each question:
 ${QUALITY_CHECKLIST}

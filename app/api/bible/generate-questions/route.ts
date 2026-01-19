@@ -20,6 +20,9 @@ interface QuestionRequest {
   passage: string;
   reference: string;
   familyMembers: FamilyMember[];
+  // Previous session context for "Previously on..." recap
+  previousReference?: string;
+  previousPassageExcerpt?: string;
 }
 
 interface GeneratedQuestion {
@@ -29,25 +32,42 @@ interface GeneratedQuestion {
 }
 
 interface DiscussionGuide {
-  bigIdea: string;
+  summary: string;
+  keyPoints: string[];
   aboutGod: string;
   aboutPeople: string;
   starterQuestion: string;
+  // Legacy field for backwards compatibility
+  bigIdea?: string;
+}
+
+interface Discovery {
+  type: 'connection' | 'wonder' | 'challenge';
+  content: string;
 }
 
 interface GeneratedResponse {
   discussionGuide: DiscussionGuide;
+  previousRecap: string | null;
   questions: GeneratedQuestion[];
+  discovery?: Discovery;
+  tomorrowPreview?: string;
 }
 
 export async function POST(req: Request) {
   try {
-    const { passage, reference, familyMembers }: QuestionRequest =
-      await req.json();
+    const {
+      passage,
+      reference,
+      familyMembers,
+      previousReference,
+      previousPassageExcerpt,
+    }: QuestionRequest = await req.json();
 
     console.log('Generating questions:', {
       reference,
       memberCount: familyMembers.length,
+      hasPreviousSession: !!previousReference,
     });
 
     // Build family context for the prompt
@@ -58,11 +78,13 @@ export async function POST(req: Request) {
       })
       .join('\n- ');
 
-    // Build prompt using configuration
+    // Build prompt using configuration (including previous session context)
     const prompt = buildQuestionGenerationPrompt({
       passage,
       reference,
       familyContext,
+      previousReference,
+      previousPassageExcerpt,
     });
 
     // Generate questions using configured model
@@ -85,6 +107,22 @@ export async function POST(req: Request) {
       !Array.isArray(generated) && generated.discussionGuide
         ? generated.discussionGuide
         : null;
+
+    // Extract additional fields from the response
+    const previousRecap =
+      !Array.isArray(generated) && generated.previousRecap
+        ? generated.previousRecap
+        : null;
+
+    const discovery =
+      !Array.isArray(generated) && generated.discovery
+        ? generated.discovery
+        : undefined;
+
+    const tomorrowPreview =
+      !Array.isArray(generated) && generated.tomorrowPreview
+        ? generated.tomorrowPreview
+        : undefined;
 
     // Validate question count
     if (
@@ -124,7 +162,10 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       discussionGuide,
+      previousRecap,
       questions,
+      discovery,
+      tomorrowPreview,
     });
   } catch (error) {
     return handleApiError(error);
